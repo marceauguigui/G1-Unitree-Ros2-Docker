@@ -1,0 +1,12 @@
+# Démarrer l'environnement en arrière-plan (None -> Created -> Running) :
+docker compose up -d
+
+# Reconstruire l'image (Dockerfile modif -> Rebuild -> Running) :
+xhost +local:docker
+docker compose up -d --build
+
+# Entrer dans le conteneur Docker (Running -> Open Terminal) :
+docker compose exec ros2_foxy bash
+
+# Arrêter complètement le conteneur (Running -> Exited -> Removed) :
+docker compose down
