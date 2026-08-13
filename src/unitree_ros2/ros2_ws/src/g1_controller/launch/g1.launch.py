@@ -31,16 +31,17 @@ def generate_launch_description():
             package='g1_controller',
             executable='real_g1_bridge',
             name='real_g1_bridge',
-            arguments=['enp1s0'],
+            arguments=['eno1'],
             output='screen',
             condition=is_real
         ),
         
         Node(
             package='g1_controller',
-            executable='g1_ros2_controller',
-            name='g1_ros2_controller',
-            output='screen'
+            executable='g1_ros2_main',
+            name='g1_ros2_main',
+            output='screen',
+            parameters=[{'mode': mode}]
         ),
 
         Node(

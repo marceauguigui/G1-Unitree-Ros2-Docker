@@ -9,6 +9,24 @@ from unitree_sdk2py_bridge import UnitreeSdk2Bridge, ElasticBand
 
 import config
 
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import Float32MultiArray
+
+LIN_VEL_PUBLISH_PERIOD = 0.02  # 50 Hz, matches the policy's control rate
+
+
+class SimStatePublisher(Node):
+    def __init__(self):
+        super().__init__('sim_state_publisher')
+        self.lin_vel_pub = self.create_publisher(Float32MultiArray, '/base_lin_vel', 10)
+
+    def publish_lin_vel(self, lin_vel):
+        msg = Float32MultiArray()
+        msg.data = lin_vel.tolist()
+        self.lin_vel_pub.publish(msg)
+
+
 locker = threading.Lock()
 
 mj_model = mujoco.MjModel.from_xml_path(config.ROBOT_SCENE)
@@ -31,6 +49,9 @@ mj_model.opt.timestep = config.SIMULATE_DT
 num_motor_ = mj_model.nu
 dim_motor_sensor_ = 3 * num_motor_
 
+rclpy.init()
+sim_state_node = SimStatePublisher()
+
 time.sleep(0.2)
 
 
@@ -45,6 +66,8 @@ def SimulationThread():
     if config.PRINT_SCENE_INFORMATION:
         unitree.PrintSceneInformation()
 
+    sim_time_since_publish = 0.0
+
     while viewer.is_running():
         step_start = time.perf_counter()
 
@@ -56,6 +79,12 @@ def SimulationThread():
                     mj_data.qpos[:3], mj_data.qvel[:3]
                 )
         mujoco.mj_step(mj_model, mj_data)
+
+        sim_time_since_publish += mj_model.opt.timestep
+        if sim_time_since_publish >= LIN_VEL_PUBLISH_PERIOD:
+            sim_time_since_publish = 0.0
+            lin_vel_local = mj_data.sensordata[dim_motor_sensor_ + 26: dim_motor_sensor_ + 29].copy()
+            sim_state_node.publish_lin_vel(lin_vel_local)
 
         locker.release()
 

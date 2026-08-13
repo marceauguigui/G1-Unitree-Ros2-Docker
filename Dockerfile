@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip3 install scipy cyclonedds==0.10.2 opencv-python mujoco pygame
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 
 WORKDIR /ros2_ws
 

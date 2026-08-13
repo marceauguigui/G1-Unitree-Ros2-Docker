@@ -14,7 +14,6 @@ from unitree_sdk2py.idl.unitree_hg.msg.dds_ import LowState_
 from unitree_sdk2py.comm.motion_switcher.motion_switcher_client import MotionSwitcherClient
 from unitree_sdk2py.utils.crc import CRC
 
-
 class RealG1Bridge(Node):
     def __init__(self, interface):
         super().__init__('real_g1_bridge')
@@ -97,10 +96,9 @@ class RealG1Bridge(Node):
         except Exception:
             pass
 
-
 def main():
     rclpy.init()
-    interface = sys.argv[1] if len(sys.argv) > 1 else "enp1s0"
+    interface = sys.argv[1] if len(sys.argv) > 1 else "eno1"
     node = RealG1Bridge(interface)
     try:
         rclpy.spin(node)
