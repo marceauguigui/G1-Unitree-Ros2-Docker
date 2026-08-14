@@ -7,10 +7,10 @@ from unitree_sdk2py.utils.crc import CRC
 
 # ── CONFIGURATION GÉNÉRALE ──
 
-nbr_joints = 29
-dt = 0.02   # Boucle de contrôle à 50 Hz
+nbr_joints = 29     # Total number of controlled joints
+dt = 0.02           # Control loop at 50 Hz
 
-# ── CARTOGRAPHIE DES ARTICULATIONS (29 DOF - ORDRE SDK / ROS 2) ──
+# ── JOINT MAPPING (29 DOF - SDK / ROS2 ORDER) ──
 
 dico_joints = {
     "hip_pitch_l": 0, "hip_roll_l": 1, "hip_yaw_l": 2, "knee_pitch_l": 3, "ankle_pitch_l": 4, "ankle_roll_l": 5,
@@ -21,9 +21,9 @@ dico_joints = {
     "should_pitch_r": 22, "should_roll_r": 23, "should_yaw_r": 24, "elbow_pitch_r": 25,
     "wrist_roll_r": 26, "wrist_pitch_r": 27, "wrist_yaw_r": 28
 }
-dico_joints_inv = {v: k for k, v in dico_joints.items()}
+dico_joints_inv = {v: k for k, v in dico_joints.items()}        # Index -> name, for readable logs
 
-# ── LIMITES ARTICULAIRES (ORDRE SDK) ──
+# ── JOINT LIMITS (SDK ORDER) ──
 
 JOINTS_MIN_MAX = [
     (-2.5307, 2.8798),       # 0: hip_pitch_l
@@ -57,7 +57,7 @@ JOINTS_MIN_MAX = [
     (-1.6144, 1.6144),       # 28: wrist_yaw_r
 ]
 
-# ── POSES EN DEGRÉS (ORDRE SDK) ──
+# ── POSES IN DEGREES (SDK ORDER) ──
 
 positions = {
     "stand": np.zeros(nbr_joints),
@@ -88,18 +88,16 @@ positions = {
                          -90, 0, 0, 0, -90, 30, 0])
 }
 
-DEFAULT_DOF_POS = np.array([
-    -0.312, 0, 0, 0.669, -0.363, 0,
-    -0.312, 0, 0, 0.669, -0.363, 0,
-    0, 0, 0,
-    0.2, 0.2, 0, 0.6, 0, 0, 0,
-    0.2, -0.2, 0, 0.6, 0, 0, 0
-], dtype=np.float32)
+DEFAULT_DOF_POS = np.array([-0.312, 0, 0, 0.669, -0.363, 0,
+                            -0.312, 0, 0, 0.669, -0.363, 0,
+                            0, 0, 0,
+                            0.2, 0.2, 0, 0.6, 0, 0, 0,
+                            0.2, -0.2, 0, 0.6, 0, 0, 0], dtype=np.float32)      # Neutral pose used by the RL policy
 
-# Poses converties en radians
+# Poses converted to radians
 positions_rad = {key: np.array([math.radians(angle) for angle in values], dtype=np.float32) for key, values in positions.items()}
 
-# ── SÉQUENCES D'ANIMATION ──
+# ── SEQUENCES ──
 
 sequences = {
     "coucou": [("coucou1", 2.0), ("coucou2", 1.0), ("coucou3", 1.0)],
@@ -107,6 +105,8 @@ sequences = {
 }
 
 # ── GAINS ASSERVISSEMENT (Kp / Kd) ──
+
+# Mujoco values, not adapted to RL
 
 # Kp = np.array([ 60, 60, 60, 100, 40, 40,
 #                 60, 60, 60, 100, 40, 40,
@@ -120,6 +120,8 @@ sequences = {
 #                 1, 1, 1, 1, 1, 1, 1,
 #                 1, 1, 1, 1, 1, 1, 1], dtype=np.float32)
 
+# MJlab values
+
 Kp = np.array([40.2, 99.1, 40.2, 99.1, 28.5, 28.5,
                40.2, 99.1, 40.2, 99.1, 28.5, 28.5,
                40.2, 28.5, 28.5,
@@ -132,10 +134,8 @@ Kd = np.array([2.6, 6.3, 2.6, 6.3, 1.8, 1.8,
                0.9, 0.9, 0.9, 0.9, 0.9, 1.1, 1.1,
                0.9, 0.9, 0.9, 0.9, 0.9, 1.1, 1.1], dtype=np.float32)
 
-# ── SCALAIRES OBSERVATIONS RL ──
+# ── RL OBSERVATION SCALARS ──
 
-OBS_SCALE_ANG_VEL = 0.2
-OBS_SCALE_DOF_VEL = 0.05
 ACTION_SCALE = np.array([   0.55,0.35,0.55,0.35,0.44,0.44,
                             0.55,0.35,0.55,0.35,0.44,0.44,
                             0.55,0.44,0.44,                         # waist_roll/pitch=0.0 for waist lock (were 0.44/0.44)
@@ -143,31 +143,25 @@ ACTION_SCALE = np.array([   0.55,0.35,0.55,0.35,0.44,0.44,
                             0.44,0.44,0.44,0.44,0.44,0.07,0.07
                             ],dtype=np.float32)
 
-# ── ÉTAT GLOBAL SDK ──
+# ── GLOBAL SDK STATE ──
 
-low_state: LowState_ = None
-crc = CRC()
+low_state: LowState_ = None     # Latest /lowstate message received, updated by g1_ros2_main.py
+crc = CRC()                     # CRC computation for LowCmd_ messages (see real_g1_bridge.py)
 
-# ── FONCTIONS UTILITAIRES ──
+# ── UTILITY FUNCTIONS ──
 
-def interpolate_cubic_vectorized(start_array, end_array, time, duration):
-    """Interpolation cubique lissée entre deux positions."""
-    t = np.clip(time / duration, 0.0, 1.0)
-    phase = 3 * (t**2) - 2 * (t**3)
+def interpolate_cubic_vectorized(start_array, end_array, time, duration):       # Smooth cubic interpolation between two positions
+    t = np.clip(time / duration, 0.0, 1.0)          # Normalized progress between 0 and 1
+    phase = 3 * (t**2) - 2 * (t**3)                 # Cubic curve (zero velocity at both ends)
     return (1.0 - phase) * start_array + phase * end_array
 
-def limit_step(current, target, max_step):
-    """Limite la variation maximale par pas de temps."""
-    return current + np.clip(target - current, -max_step, max_step)
-
-def play_sequence(sequence, step_index, step_time, current_position, dt_val, forced_duration=None):
-    """Joue une séquence de poses prédéfinies."""
+def play_sequence(sequence, step_index, step_time, current_position, dt_val, forced_duration=None):     # Plays a sequence of predefined poses
     if sequence is None or step_index >= len(sequence):
         return current_position, step_index, step_time, current_position, True
 
-    pose_name, duration = sequence[step_index]
+    pose_name, duration = sequence[step_index]      # Target pose and default duration for the current step
     if forced_duration is not None:
-        duration = forced_duration
+        duration = forced_duration                  # Dynamic duration proportional to distance
 
     is_finished = False
 
@@ -178,9 +172,9 @@ def play_sequence(sequence, step_index, step_time, current_position, dt_val, for
         target_list = interpolate_cubic_vectorized(current_position, target_pose, step_time, duration)
 
         if step_time >= duration:
-            step_index += 1
+            step_index += 1                             # Move to the next step of the sequence
             step_time = 0.0
-            current_position = np.copy(target_list)
+            current_position = np.copy(target_list)     # New starting point for the next step
 
             if step_index >= len(sequence):
                 is_finished = True
@@ -190,10 +184,7 @@ def play_sequence(sequence, step_index, step_time, current_position, dt_val, for
 
     return target_list, step_index, step_time, current_position, is_finished
 
-def get_rpy_from_quat(quat):
-    """
-    Convertit un quaternion [w, x, y, z] en angles d'Euler Roll-Pitch-Yaw (en RADIANS).
-    """
+def get_rpy_from_quat(quat):        # Converts quaternion [w, x, y, z] to Roll-Pitch-Yaw Euler angles in rad
     if quat is None or len(quat) < 4:
         return 0.0, 0.0, 0.0
 
@@ -201,21 +192,17 @@ def get_rpy_from_quat(quat):
     norm = np.linalg.norm(q)
     if norm < 1e-6:
         return 0.0, 0.0, 0.0
-    q = q / norm
+    q = q / norm        # Normalization, safety against a malformed quaternion
 
     try:
-        # Repère SciPy attend [x, y, z, w]
+        # SciPy expects [x, y, z, w]
         r = R.from_quat([q[1], q[2], q[3], q[0]])
         roll, pitch, yaw = r.as_euler('xyz', degrees=False)
         return float(roll), float(pitch), float(yaw)
     except Exception:
         return 0.0, 0.0, 0.0
 
-def get_projected_gravity(quat):
-    """
-    Calcule le vecteur de gravité projeté [0, 0, -1] dans le repère local du robot.
-    quat: [w, x, y, z]
-    """
+def get_projected_gravity(quat):        # Computes the gravity vector [0, 0, -1] projected into the robot's local frame quat: [w, x, y, z]
     if quat is None or len(quat) < 4:
         return np.array([0.0, 0.0, -1.0], dtype=np.float32)
 
@@ -225,25 +212,11 @@ def get_projected_gravity(quat):
         return np.array([0.0, 0.0, -1.0], dtype=np.float32)
     q = q / norm
 
-    # Transformation du vecteur [0, 0, -1] vers le repère local
-    r = R.from_quat([q[1], q[2], q[3], q[0]])
-    grav_body = r.inv().apply([0.0, 0.0, -1.0])
+    r = R.from_quat([q[1], q[2], q[3], q[0]])       # Transform the [0, 0, -1] vector into the local frame
+    grav_body = r.inv().apply([0.0, 0.0, -1.0])     # Inverse rotation: world frame -> body frame
     return grav_body.astype(np.float32)
 
-def evaluate_stability_pitch(pitch_rad, seuil_perturbation_deg=5.0, seuil_chute_deg=30.0):
-    """
-    Évalue la stabilité du robot basée sur l'angle de pitch (en radians).
-    """
-    pitch_deg = abs(math.degrees(pitch_rad))
-    if pitch_deg > seuil_chute_deg:
-        return "CRITICAL"
-    elif pitch_deg > seuil_perturbation_deg:
-        return "DISTURBED"
-    else:
-        return "STABLE"
-
-def get_local_lin_vel(quat, vel_world):
-    """Convertit une vitesse linéaire du repère monde vers le repère local du corps."""
+def get_local_lin_vel(quat, vel_world):     # Converts a linear velocity from the world frame to the body's local frame
     q = np.array(quat, dtype=np.float64)
     norm = np.linalg.norm(q)
     if norm < 1e-6:
