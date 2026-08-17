@@ -13,8 +13,6 @@ Isaac Lab), sim2sim validation, and sim2real deployment via ROS2.
 - [Exporting a policy for deployment](#exporting-a-policy-for-deployment)
 - [Real robot deployment](#real-robot-deployment)
 - [Safety protocol](#safety-protocol)
-- [Known issues / open items](#known-issues--open-items)
-- [Troubleshooting](#troubleshooting)
 
 ## Overview
 
@@ -87,7 +85,7 @@ pip install -e .
 `setup.py` pins exactly (currently `mujoco-warp==3.5.0`, which requires
 `mujoco<3.8.0` — newer `mujoco` removed the `mjENBL_MULTICCD` enum that this
 `mujoco_warp` version expects). Check `setup.py` for the current pin before
-assuming versions — see [Troubleshooting](#troubleshooting).
+assuming versions
 
 ### 3. Isaac Lab stack
 
@@ -100,8 +98,7 @@ pip install -e .
 ```
 
 USD assets (`src/unitree_model/`) must additionally be reachable at
-`~/unitree_model` (a path currently hardcoded in the task config — see
-[Known issues](#known-issues--open-items)). Either symlink it:
+`~/unitree_model` (a path currently hardcoded in the task config). Either symlink it:
 ```bash
 ln -s ~/G1-Unitree-Ros2-Docker/src/unitree_model ~/unitree_model
 ```
@@ -204,7 +201,7 @@ cause of multiple real-robot instability episodes. Verify the export script
 wraps the MLP with `(x - obs_mean) / obs_std` before the forward pass, and
 that `input_dim` matches expectations:
 - Flat, no waist lock: 99 dims
-- Rough (height_scan): 286 dims — **do not deploy to real hardware**
+- Rough (height_scan): 286 dims — **NOT WORKING YET**
 
 Exported policies go to `g1_exported_policies/mjpolicy_N.pt`, referenced by
 `policy_path` in `g1_ros2_main.py` (update manually after each export).
@@ -242,13 +239,12 @@ ros2 launch g1_controller g1.launch.py mode:=real
 | `<sequence name>` (e.g. `coucou`, `squat_workout`) | Play a predefined sequence (HIGH mode) |
 | `vel <vx> <vy> <vyaw>` | Set velocity command (RL mode) |
 
-Node always boots in a safe mode (currently `LOW` — see
-[Known issues](#known-issues--open-items) regarding switching this to `STOP`
+Node always boots in a safe mode (`LOW`) regarding switching this to `STOP`
 before real-hardware use).
 
 ## Safety protocol
 
-**Never skip steps. Always have the e-stop in hand, never set down.**
+**Always have the e-stop in hand.**
 
 1. Robot on the gantry, weight fully supported (not just "feet grazing the
    floor" — that is not representative of training conditions and produces
@@ -261,67 +257,3 @@ before real-hardware use).
    that actually switches to `STOP` is commented out in
    `g1_ros2_main.py::control_loop_callback`. **Uncomment it before any
    unsupervised real-hardware test.**
-
-## Known issues / open items
-
-- **`waist_roll` / `waist_pitch` locked at the firmware level.** Mechanical
-  unlock done, remote-controller 3-DOF gesture done, but low-level `LowCmd`
-  commands to these two joints are silently ignored. `LocoClient.GetFsmId()`
-  consistently returns error `3102` regardless of call sequence tested
-  (`Damp`/`Start`/`WaitLeaseApplied`, before/after `ReleaseMode()`). No
-  physical movement observed from any `LocoClient` call. **Reported to
-  Unitree support, unresolved.** Current policies are trained with these two
-  DOF's action scale forced to `0.0` (`g1_constants.py`,
-  `G1_ACTION_SCALE["waist_roll_joint"/"waist_pitch_joint"] = 0.0`) — armature/
-  stiffness/damping are left intact so the joint stays physically rigid in
-  simulation, matching the real lock.
-- **`rt/sportmodestate` never publishes on this robot.** Confirmed via raw
-  DDS subscription inside `real_g1_bridge.py`'s own process (same process
-  that successfully handles `rt/lowstate`), across multiple `LocoClient`
-  call sequences. `base_lin_vel` currently has no real-robot source and
-  reads as `[0, 0, 0]` in `mode:=real` — the `/sportstate` relay path was
-  removed from `g1_ros2_main.py` pending a resolution from Unitree support
-  or an alternative estimation source.
-- **`~/unitree_model` hardcoded path** in Isaac Lab task config, doesn't
-  match the actual repo location — symlink or patch required (see
-  installation step 3).
-- **Default boot mode is `LOW`, not `STOP`**, in `g1_ros2_main.py` — a
-  leftover from debugging the mode-switch phantom-target bug. Switch back to
-  `STOP` before treating any real-hardware session as routine (not just
-  first contact).
-
-## Troubleshooting
-
-**`ModuleNotFoundError: No module named 'src'` / `'unitree_rl_lab'` /
-`'unitree_rl_mjlab'`** — the extension package wasn't installed in the
-active conda env. Find its `setup.py`/`pyproject.toml` (may be nested, e.g.
-`source/unitree_rl_lab/` for Isaac Lab) and `pip install -e .` from there,
-in the correct conda environment.
-
-**`AttributeError: 'NoneType' object has no attribute '_ref'` (DDS)** —
-CycloneDDS's participant isn't ready yet. A fixed `time.sleep()` after
-`ChannelFactoryInitialize()` is not reliable; use a retry loop instead (see
-`real_g1_bridge.py::_create_dds_client_with_retry`).
-
-**`AttributeError: ... has no attribute 'mjENBL_MULTICCD'`** — `mujoco` /
-`mujoco_warp` version mismatch. `mujoco>=3.8.0` removed this enable-bit
-(multiccd became default-on, moved to `mjDSBL_MULTICCD`). Match the exact
-pin in `unitree_rl_mjlab/setup.py`.
-
-**`does not match an available interface` (DDS init)** — the network
-interface has no IPv4 assigned. `ifconfig <iface>` to check; assign a static
-IP in the robot's subnet if missing.
-
-**`FileNotFoundError: USD file not found`** (Isaac Lab) — see the
-`~/unitree_model` known issue above.
-
-**Real robot "does something wrong / jerks" in RL mode** — check, in order:
-1. Is `ACTION_SCALE` in `g1_config.py` (deployment) actually consistent with
-   `G1_ACTION_SCALE` in `g1_constants.py` (training)? These are two separate
-   files that must be kept in sync manually.
-2. Was the exported policy normalized correctly (see
-   [Exporting a policy](#exporting-a-policy-for-deployment))?
-3. Is fall detection silently letting an unstable episode run to completion
-   (log-only, not enforcing STOP)?
-4. Compare `[obs]` debug logs (enable `PRINT_OBS_DEBUG` in `g1_ros2_main.py`)
-   against a known-good `teleop.py` run, term by term.
