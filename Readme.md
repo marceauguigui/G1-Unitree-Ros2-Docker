@@ -35,6 +35,14 @@ Two ways to validate a policy before the real robot:
    ROS2 pipeline used on the real robot, against a simulated G1 in MuJoCo.
    Slower to set up, but validates the actual deployment code path.
 
+All ROS2/deployment work runs inside a Docker container (`ros2_foxy`, see
+[Installation](#installation)) in **host network mode** — it shares the
+host's network stack directly rather than being isolated behind Docker's
+bridge network. This is why network setup for the real robot (static IP on
+the Ethernet interface, etc.) is done at the host level and is immediately
+visible inside the container, with no port-forwarding or bridge config
+needed.
+
 ## Repository structure
 
 ```
@@ -106,18 +114,36 @@ or patch the hardcoded path directly in the config.
 
 ### 4. ROS2 workspace (Docker)
 
+⚠️ **Plug in the PS5 controller before starting the container** — it's only
+detected if already connected at container start.
+ 
 ```bash
-cd docker && docker compose up -d
+# Start the container (background):
+docker compose up -d
+ 
+# Rebuild after a Dockerfile change:
+xhost +local:docker
+docker compose up -d --build
+ 
+# Enter the container:
 docker compose exec ros2_foxy bash
+ 
+# Stop and remove the container:
+docker compose down
+```
+ 
+Inside the container:
+```bash
 cd /ros2_ws
 colcon build --packages-select g1_controller
 source install/setup.bash
 ```
-⚠️ The controller (Ethernet) connecting to the real G1 needs a static IP on
-the correct interface (e.g. `192.168.123.x` range) — see
+The controller (Ethernet) connecting to the real G1 needs a static IP on the
+correct interface (e.g. `192.168.123.x` range) — see
 [Real robot deployment](#real-robot-deployment). Confirm the interface name
-with `ls /sys/class/net/` — it is **not** guaranteed to be the same across
-machines (e.g. `eno1` vs a USB adapter's `enp1s0`).
+with `ls /sys/class/net/` on the **host** (the container shares this network
+stack directly, see [Overview](#overview)) — it is **not** guaranteed to be
+the same across machines (e.g. `eno1` vs a USB adapter's `enp1s0`).
 
 ### 5. Environment script
 
