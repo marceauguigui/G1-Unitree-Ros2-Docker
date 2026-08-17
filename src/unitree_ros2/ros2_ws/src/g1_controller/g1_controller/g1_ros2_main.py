@@ -69,7 +69,7 @@ class G1Ros2Controller(Node):
         self.history_length = 1                                         # Number of stacked observation frames
         self.obs_buffer = collections.deque(maxlen=self.history_length) # Buffer of past observations
 
-        policy_path = "src/unitree_ros2/ros2_ws/src/g1_exported_policies/mjpolicy_0.pt"     # UPDATE THIS PATH to the .pt wanted
+        policy_path = "src/unitree_rl_mjlab/g1_exported_policies/mjpolicy_0.pt"     # UPDATE THIS PATH to the .pt wanted
         try:
             if os.path.exists(policy_path):
                 self.policy = torch.jit.load(policy_path)                                   # Load the exported TorchScript policy

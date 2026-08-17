@@ -25,8 +25,11 @@ ros2 run joy joy_node
 ros2 run g1_controller ps5_bridge
 # TERMINAL 3
 ros2 run g1_controller g1_ros2_main
-# TERMINAL 4
-mujocopython //  mujocopython_real
+# TERMINAL 4 SIM
+cd /ros2_ws/src/unitree_mujoco/simulate_python
+python3 unitree_mujoco.py
+# TERMINAL 4 REAL
+ros2 run g1_controller real_g1_bridge
 
 # Exemples of publishers
 
