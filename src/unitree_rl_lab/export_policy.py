@@ -1,127 +1,178 @@
 #!/usr/bin/env python3
 import os
+import glob
 import torch
 import torch.nn as nn
 from collections import OrderedDict
 
-# ── 1. Define the exact Actor MLP architecture matching your training ──
-class G1ActorMLP(nn.Module):
-    def __init__(self, in_features=1415, out_features=29):
-        super().__init__()
-        self.mlp = nn.Sequential(
-            nn.Linear(in_features, 512),
-            nn.ELU(alpha=1.0),
-            nn.Linear(512, 256),
-            nn.ELU(alpha=1.0),
-            nn.Linear(256, 128),
-            nn.ELU(alpha=1.0),
-            nn.Linear(128, out_features)
-        )
 
-    def forward(self, x):
-        return self.mlp(x)
-
-
-def flatten_dict(d, parent_key='', sep='.'):
-    """Recursively flattens nested dictionaries into single key-tensor pairs."""
+def flatten_state_dict(d, parent_key='', sep='.'):
     items = []
     for k, v in d.items():
         new_key = f"{parent_key}{sep}{k}" if parent_key else k
-        if isinstance(v, (dict, OrderedDict)) or hasattr(v, 'items'):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        if isinstance(v, (dict, OrderedDict)):
+            items.extend(flatten_state_dict(v, new_key, sep=sep).items())
         elif isinstance(v, torch.Tensor):
             items.append((new_key, v))
     return dict(items)
 
 
-def main():
-    # ── 2. Configure file paths ──
-    checkpoint_path = os.path.expanduser(
-        "~/unitree_rl_lab/logs/rsl_rl/unitree_g1_29dof_velocity/2026-07-28_18-16-37/model_11300.pt"
+def find_latest_checkpoint(logs_subpath=("logs", "rsl_rl", "unitree_g1_29dof_velocity")):
+    """Trouve automatiquement le checkpoint le plus récent (tous runs confondus),
+    relatif à l'emplacement de CE script — portable, ne dépend ni de la machine
+    ni du nom d'utilisateur ni du dossier depuis lequel le script est lancé."""
+    pattern = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        *logs_subpath, "*", "model_*.pt"
     )
-    output_dir = os.path.expanduser("~/g1_policy")
-    os.makedirs(output_dir, exist_ok=True)
-    
-    output_file_pt = os.path.join(output_dir, "policy2.pt")
-    output_file_onnx = os.path.join(output_dir, "policy2.onnx")
+    candidates = glob.glob(pattern)
+    if not candidates:
+        raise FileNotFoundError(f"Aucun checkpoint trouvé avec le motif : {pattern}")
+    return max(candidates, key=os.path.getmtime)
 
-    print(f"Loading weights from: {checkpoint_path}")
+
+def main():
+    checkpoint_path = find_latest_checkpoint()
+
+    # Relatif à l'emplacement du script (unitree_rl_lab/), pas de nom
+    # d'utilisateur/machine en dur.
+    output_dir = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", "g1_exported_policies"
+    )
+    os.makedirs(output_dir, exist_ok=True)
+
+    existing_files = os.listdir(output_dir)
+    indices = []
+    for f in existing_files:
+        if f.startswith("isaac_policy_") and f.endswith(".pt"):
+            parts = f.split("_")
+            if len(parts) == 2:
+                idx_str = parts[1].split(".")[0]
+                if idx_str.isdigit():
+                    indices.append(int(idx_str))
+
+    next_idx = max(indices) + 1 if indices else 0
+    base_filename = f"isaac_policy_{next_idx}"
+
+    output_file_pt = os.path.join(output_dir, f"{base_filename}.pt")
+    output_file_onnx = os.path.join(output_dir, f"{base_filename}.onnx")
+
+    print(f"Chargement du checkpoint : {checkpoint_path}")
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
 
-    # Flatten nested dicts to get pure Tensors
-    flat_tensors = flatten_dict(checkpoint)
+    if "actor_state_dict" in checkpoint:
+        raw_actor_dict = checkpoint["actor_state_dict"]
+    else:
+        raise RuntimeError("La clé 'actor_state_dict' est introuvable dans le checkpoint.")
 
-    # Expected tensor dimensions in sequence: (weight_shape, bias_shape)
-    expected_shapes = [
-        (torch.Size([512, 1415]), torch.Size([512])),
-        (torch.Size([256, 512]), torch.Size([256])),
-        (torch.Size([128, 256]), torch.Size([128])),
-        (torch.Size([29, 128]), torch.Size([29]))
-    ]
+    flat_actor_dict = flatten_state_dict(raw_actor_dict)
 
-    # Filter out Critic weights
-    actor_tensors = {k: v for k, v in flat_tensors.items() if "critic" not in k.lower()}
+    # ── Extraction de la normalisation d'observation (si présente) ──
+    norm_mean_key = next((k for k in flat_actor_dict if k.endswith("obs_normalizer._mean")), None)
+    norm_std_key = next((k for k in flat_actor_dict if k.endswith("obs_normalizer._std")), None)
 
-    target_keys = [
-        "mlp.0.weight", "mlp.0.bias",
-        "mlp.2.weight", "mlp.2.bias",
-        "mlp.4.weight", "mlp.4.bias",
-        "mlp.6.weight", "mlp.6.bias"
-    ]
-    
-    actor_state_dict = {}
-    used_keys = set()
+    if norm_mean_key is None or norm_std_key is None:
+        print(
+            "⚠️  Aucun obs_normalizer trouvé dans ce checkpoint — export SANS "
+            "normalisation (identité : mean=0, std=1).\n"
+            "    ⚠️  VÉRIFIE que c'est bien voulu : confirme dans "
+            "logs/.../params/*.yaml que obs_normalization était bien à `false` "
+            "pour CE run précis, avant de faire confiance à cet export sur le "
+            "robot réel. Si la normalisation était censée être active, le "
+            "problème est dans l'entraînement, pas dans cet export — "
+            "ré-entraîne plutôt que de continuer."
+        )
+        obs_mean = None
+        obs_std = None
+    else:
+        obs_mean = flat_actor_dict[norm_mean_key].clone().float()
+        obs_std = flat_actor_dict[norm_std_key].clone().float()
+        print(f"Normalisation trouvée : mean shape={obs_mean.shape}, std shape={obs_std.shape}")
 
-    # Smart mapping by matching tensor dimensions
-    for layer_idx, (w_shape, b_shape) in enumerate(expected_shapes):
-        w_key, b_key = None, None
-        
-        for k, tensor in actor_tensors.items():
-            if k not in used_keys and tensor.shape == w_shape:
-                w_key = k
-                break
-        for k, tensor in actor_tensors.items():
-            if k not in used_keys and k != w_key and tensor.shape == b_shape:
-                b_key = k
-                break
+    weight_shapes = []
+    for k, v in flat_actor_dict.items():
+        if v.ndim == 2 and "weight" in k.lower():
+            weight_shapes.append((k, v.shape))
 
-        if w_key and b_key:
-            used_keys.add(w_key)
-            used_keys.add(b_key)
-            actor_state_dict[target_keys[layer_idx * 2]] = actor_tensors[w_key]
-            actor_state_dict[target_keys[layer_idx * 2 + 1]] = actor_tensors[b_key]
-            print(f"Mapped Layer {layer_idx}: {w_key}")
-        else:
-            print(f"❌ Could not match shapes for Layer {layer_idx} ({w_shape}, {b_shape})")
+    print("\nMatrices de poids de l'acteur détectées :")
+    for k, shape in weight_shapes:
+        print(f"  - {k}: {shape}")
 
-    # Load into clean actor model
-    actor = G1ActorMLP(in_features=1415, out_features=29)
-    actor.load_state_dict(actor_state_dict)
+    if not weight_shapes:
+        raise RuntimeError("Impossible de trouver des matrices de poids valides pour l'acteur.")
+
+    weight_shapes = sorted(weight_shapes, key=lambda x: x[0])
+
+    first_w_shape = weight_shapes[0][1]
+    hidden_dim, input_dim = first_w_shape
+    output_dim = weight_shapes[-1][1][0]
+
+    print(f"\n✨ Dimensions extraites :")
+    print(f"   - Entrée (input_dim) : {input_dim}")
+    print(f"   - Couche cachée : {hidden_dim}")
+    print(f"   - Sortie (output_dim) : {output_dim}")
+
+    dims = [input_dim]
+    for _, shape in weight_shapes:
+        dims.append(shape[0])
+
+    # Si pas de normalisation trouvée : identité (mean=0, std=1), même dimension
+    # que l'entrée, pour que le wrapper reste structurellement identique dans
+    # les deux cas (juste un no-op mathématique quand il n'y a rien à faire).
+    if obs_mean is None:
+        obs_mean = torch.zeros(input_dim, dtype=torch.float32)
+        obs_std = torch.ones(input_dim, dtype=torch.float32)
+
+    # ── Wrapper qui normalise AVANT le MLP (no-op si mean=0/std=1) ──
+    class NormalizedActorMLP(nn.Module):
+        def __init__(self, layer_dims, obs_mean, obs_std):
+            super().__init__()
+            layers = []
+            for i in range(len(layer_dims) - 2):
+                layers.append(nn.Linear(layer_dims[i], layer_dims[i+1]))
+                layers.append(nn.ELU(alpha=1.0))
+            layers.append(nn.Linear(layer_dims[-2], layer_dims[-1]))
+            self.mlp = nn.Sequential(*layers)
+            self.register_buffer("obs_mean", obs_mean)
+            self.register_buffer("obs_std", obs_std)
+
+        def forward(self, x):
+            x = (x - self.obs_mean) / self.obs_std
+            return self.mlp(x)
+
+    target_state_dict = {}
+    layer_idx = 0
+    for i in range(len(weight_shapes)):
+        w_key, _ = weight_shapes[i]
+        b_key = w_key.replace("weight", "bias")
+
+        target_state_dict[f"mlp.{layer_idx}.weight"] = flat_actor_dict[w_key]
+        if b_key in flat_actor_dict:
+            target_state_dict[f"mlp.{layer_idx}.bias"] = flat_actor_dict[b_key]
+
+        layer_idx += 2
+
+    actor = NormalizedActorMLP(dims, obs_mean, obs_std)
+    actor.load_state_dict(target_state_dict, strict=False)  # strict=False : obs_mean/std sont des buffers, pas dans target_state_dict
     actor.eval()
 
-    dummy_input = torch.zeros(1, 1415, dtype=torch.float32)
+    dummy_input = torch.zeros(1, input_dim, dtype=torch.float32)
+    with torch.no_grad():
+        out = actor(dummy_input)
+    print(f"Test d'inférence réussi ! Shape de sortie : {out.shape}")
 
-    # 1. Trace and export to TorchScript (.pt)
     traced_policy = torch.jit.trace(actor, dummy_input)
     traced_policy.save(output_file_pt)
-    print(f"\n✅ SUCCESS: TorchScript saved at: {output_file_pt}")
+    print(f"\n✅ SUCCÈS : Politique exportée en TorchScript vers : {output_file_pt}")
 
-    # 2. Export to ONNX (.onnx)
     torch.onnx.export(
-        actor,
-        dummy_input,
-        output_file_onnx,
-        export_params=True,
-        opset_version=11,
-        do_constant_folding=True,
-        input_names=['input_obs'],
-        output_names=['output_actions'],
-        dynamic_axes={
-            'input_obs': {0: 'batch_size'},
-            'output_actions': {0: 'batch_size'}
-        }
+        actor, dummy_input, output_file_onnx,
+        export_params=True, opset_version=18, do_constant_folding=True,
+        input_names=['input_obs'], output_names=['output_actions'],
+        dynamic_axes={'input_obs': {0: 'batch_size'}, 'output_actions': {0: 'batch_size'}}
     )
-    print(f"✅ SUCCESS: ONNX model saved at: {output_file_onnx}")
+    print(f"✅ SUCCÈS : Politique exportée en ONNX vers : {output_file_onnx}")
+    print(f"👉 Kp/Kd/DEFAULT_DOF_POS/ACTION_SCALE inchangés dans g1_config.py. Pointe policy_path vers : {output_file_pt}")
 
 
 if __name__ == "__main__":

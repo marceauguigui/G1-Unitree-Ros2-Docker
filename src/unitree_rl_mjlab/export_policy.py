@@ -16,16 +16,16 @@ def flatten_state_dict(d, parent_key='', sep='.'):
 
 def main():
     checkpoint_path = os.path.expanduser(
-        "${workspaceFolder}/src/unitree_rl_mjlab/logs/rsl_rl/g1_velocity/2026-08-10_09-34-04_flat/model_49999.pt"
+        "/home/noar/G1-Unitree-Ros2-Docker/src/unitree_rl_mjlab/logs/rsl_rl/g1_velocity/2026-08-07_10-35-57_rough/model_49999.pt"
     )
 
-    output_dir = os.path.expanduser("~/unitree_rl_mjlab/g1_exported_policies")
+    output_dir = os.path.expanduser("~/G1-Unitree-Ros2-Docker/src/g1_exported_policies")
     os.makedirs(output_dir, exist_ok=True)
 
     existing_files = os.listdir(output_dir)
     indices = []
     for f in existing_files:
-        if f.startswith("mjpolicy_") and f.endswith(".pt"):
+        if f.startswith("mj_policy_") and f.endswith(".pt"):
             parts = f.split("_")
             if len(parts) == 2:
                 idx_str = parts[1].split(".")[0]
@@ -33,7 +33,7 @@ def main():
                     indices.append(int(idx_str))
 
     next_idx = max(indices) + 1 if indices else 0
-    base_filename = f"mjpolicy_{next_idx}"
+    base_filename = f"mj_policy_{next_idx}"
 
     output_file_pt = os.path.join(output_dir, f"{base_filename}.pt")
     output_file_onnx = os.path.join(output_dir, f"{base_filename}.onnx")

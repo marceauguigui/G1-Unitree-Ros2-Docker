@@ -50,15 +50,15 @@ ________________________________________________________________________________
 # MJLAB RAW COMMANDS
 
 #TRAIN
-python scripts/rsl_rl/train.py --task Unitree-G1-29dof-Velocity --headless
+python scripts/train.py Mjlab-Velocity-Flat-Unitree-G1 --env.scene.num-envs=4096 --agent.max-iterations 50000
 
-python scripts/rsl_rl/train.py --task Unitree-G1-29dof-Velocity --headless --resume
+python scripts/train.py Mjlab-Velocity-Flat-Unitree-G1 --env.scene.num-envs=4096 --agent.resume True --agent.max-iterations 50000
 
 #PLAY
-python scripts/rsl_rl/play.py --task Unitree-G1-29dof-Velocity --num_envs 1
+python scripts/play.py Mjlab-Velocity-Flat-Unitree-G1 --checkpoint-file $(ls -t logs/rsl_rl/g1_velocity/*/model_*.pt | head -n 1)
 
 #TELEOP
-python scripts/rsl_rl/teleop.py --task Unitree-G1-29dof-Velocity --num_envs 1
+python scripts/teleop.py Mjlab-Velocity-Flat-Unitree-G1 --checkpoint-file $(ls -t logs/rsl_rl/g1_velocity/*/model_*.pt | head -n 1)
 
 #WORKING
 
