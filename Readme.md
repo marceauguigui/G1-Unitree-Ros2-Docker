@@ -60,6 +60,7 @@ G1-Unitree-Ros2-Docker/
 │   ├── unitree_model/             # USD assets for Isaac Lab (G1/H1/Go2/...)
 │   ├── unitree_mujoco/            # MuJoCo sim2sim bridge (unitree_sdk2py_bridge.py, unitree_mujoco.py)
 │   │   └── simulate_python/
+│   ├── unitree_ros/               # URDF assets if needed (G1/H1/Go2/...)
 │   ├── unitree_ros2/              # ROS2 workspace
 │   │   └── ros2_ws/src/g1_controller/
 │   │       ├── g1_controller/
