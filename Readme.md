@@ -135,9 +135,9 @@ docker compose down
  
 Inside the container:
 ```bash
-cd /ros2_ws
-colcon build --packages-select g1_controller
-source install/setup.bash
+cd /ros2_ws   # if not already inside
+cb            # for colcon build --packages-select g1_controller
+              # source install/setup.bash
 ```
 The controller (Ethernet) connecting to the real G1 needs a static IP on the
 correct interface (e.g. `192.168.123.x` range) — see
