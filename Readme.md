@@ -114,7 +114,17 @@ ln -s ~/G1-Unitree-Ros2-Docker/src/unitree_model ~/unitree_model
 ```
 or patch the hardcoded path directly in the config.
 
-### 4. ROS2 workspace (Docker)
+
+### 4. Environment script
+
+```bash
+echo 'source ~/G1-Unitree-Ros2-Docker/setup_env.sh' >> ~/.bashrc
+source ~/.bashrc
+```
+Gives you: `mjlab` / `isaaclab` (conda activate shortcuts), `g1train` /
+`g1mjtrain` and friends (see `setup_env.sh` for the full alias list).
+
+### 5. ROS2 workspace (Docker)
 
 ⚠️ **Plug in the PS5 controller before starting the container** — it's only
 detected if already connected at container start.
@@ -146,15 +156,6 @@ correct interface (e.g. `192.168.123.x` range) — see
 with `ls /sys/class/net/` on the **host** (the container shares this network
 stack directly, see [Overview](#overview)) — it is **not** guaranteed to be
 the same across machines (e.g. `eno1` vs a USB adapter's `enp1s0`).
-
-### 5. Environment script
-
-```bash
-echo 'source ~/G1-Unitree-Ros2-Docker/setup_env.sh' >> ~/.bashrc
-source ~/.bashrc
-```
-Gives you: `mjlab` / `isaaclab` (conda activate shortcuts), `g1train` /
-`g1mjtrain` and friends (see `setup_env.sh` for the full alias list).
 
 ## Training
 
