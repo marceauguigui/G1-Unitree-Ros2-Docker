@@ -5,8 +5,8 @@ export MUJOCO_LIB_PATH="$HOME/.mujoco/mujoco-3.2.3/lib"
 export LD_LIBRARY_PATH="/opt/ros/foxy/lib:/opt/ros/foxy/lib/x86_64-linux-gnu:$MUJOCO_LIB_PATH${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 # ── General aliases ──
-alias g1brc="nano ~/.bashrc"
-alias g1sbrc="source ~/.bashrc"
+alias brc="nano ~/.bashrc"
+alias sbrc="source ~/.bashrc"
 
 # >>> conda initialize >>>
 __conda_setup="$("$HOME/miniconda3/bin/conda" 'shell.bash' 'hook' 2> /dev/null)"

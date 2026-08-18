@@ -1,4 +1,4 @@
-# Docker commands
+# DOCKER COMMANDS
 
 # Démarrer l'environnement en arrière-plan (None -> Created -> Running) :
 docker compose up -d
@@ -17,7 +17,7 @@ docker compose down
 
 ______________________________________________________________________________________________
 
-# Ros2 commands
+# ROS2 COMMANDS
 
 # TERMINAL 1
 ros2 run joy joy_node
@@ -44,3 +44,43 @@ ros2 topic pub --once /command std_msgs/msg/String "data: 'stand'"
 
 ros2 launch g1_controller g1.launch.py mode:=sim
 ros2 launch g1_controller g1.launch.py mode:=real
+
+______________________________________________________________________________________________
+
+# MJLAB RAW COMMANDS
+
+#TRAIN
+python scripts/rsl_rl/train.py --task Unitree-G1-29dof-Velocity --headless
+
+python scripts/rsl_rl/train.py --task Unitree-G1-29dof-Velocity --headless --resume
+
+#PLAY
+python scripts/rsl_rl/play.py --task Unitree-G1-29dof-Velocity --num_envs 1
+
+#TELEOP
+python scripts/rsl_rl/teleop.py --task Unitree-G1-29dof-Velocity --num_envs 1
+
+#WORKING
+
+
+tensorboard --logdir=logs/
+
+______________________________________________________________________________________________
+
+# ISAACLAB RAW COMMANDS
+
+#TRAIN
+python scripts/rsl_rl/train.py --task Unitree-G1-29dof-Velocity --headless
+
+python scripts/rsl_rl/train.py --task Unitree-G1-29dof-Velocity --headless --resume
+
+#PLAY
+python scripts/rsl_rl/play.py --task Unitree-G1-29dof-Velocity --num_envs 1
+
+#TELEOP
+python scripts/rsl_rl/teleop.py --task Unitree-G1-29dof-Velocity --num_envs 1
+
+#WORKING
+python scripts/rsl_rl/teleop.py --task Unitree-G1-29dof-Velocity --checkpoint ${workspaceFolder}/src/unitree_rl_lab/logs/rsl_rl/unitree_g1_29dof_velocity/2026-07-24_15-55-15/model_89999.pt --num_envs 1
+
+tensorboard --logdir=logs/

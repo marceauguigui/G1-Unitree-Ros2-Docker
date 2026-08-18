@@ -7,7 +7,7 @@
       },
       "includePath": [
         "/opt/ros/jazzy/include/**",
-        "/home/noar/G1-Unitree-Ros2-Docker/src/unitree_sdk2/include/**",
+        "${workspaceFolder}/src/unitree_sdk2/include/**",
         "/usr/include/**"
       ],
       "name": "ROS",
