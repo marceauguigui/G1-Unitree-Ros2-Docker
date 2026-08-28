@@ -147,19 +147,17 @@ def main():
 
     dt = env.unwrapped.step_dt
 
-    # --- INITIALISATION DE L'INTERFACE MANETTE ---
+    # --- Controller init ---
     teleop_device = Se2Gamepad(cfg=Se2GamepadCfg())
     print("\n" + "="*55)
-    print("[INFO] CONTRÔLES MANETTE DU G1 (AVEC ZONE MORTE) :")
-    print("  Joystick Gauche (Haut/Bas)    : Avancer / Reculer (Max 1.0 m/s)")
-    print("  Joystick Gauche (G/D)         : Translation Latérale (Max 1.0 m/s)")
-    print("  Joystick Droit (G/D)          : Pivoter sur place (Max 1.0 rad/s)")
+    print("[INFO] G1 JOYSTICK CONTROL :")
+    print("  Left Joystick (Up/Down)    : Forward / Backward (Max 1.0 m/s)")
+    print("  Left Joystick (L/R)         : Translation (Max 1.0 m/s)")
+    print("  Right Joystick (L/R)          : Rotation (Max 1.0 rad/s)")
     print("="*55 + "\n")
 
-    # --- LE DIRECT HIT : ON EMPÊCHE ISAAC LAB D'ÉCRASER NOS COMMANDES ---
     if hasattr(env.unwrapped, "command_manager"):
         env.unwrapped.command_manager.compute = lambda *args, **kwargs: None
-    # ------------------------------------------------------------------
 
     obs = env.get_observations()
     if version("rsl-rl-lib").startswith("2.3."):
@@ -171,34 +169,29 @@ def main():
         start_time = time.time()
         # print(env.unwrapped.scene["robot"].data.joint_names)
         
-        # 1. Capture des axes de la manette
         velocities = teleop_device.advance()
         targets = torch.zeros(env.unwrapped.num_envs, 3, device=env.unwrapped.device)
         
-        # --- APPLICATION DE LA ZONE MORTE ---
-        DEADZONE = 0.10  # Les signaux en dessous de 10% d'inclinaison sont ignorés
+        DEADZONE = 0.10
         
         v_x = velocities[0] if abs(velocities[0]) > DEADZONE else 0.0
         v_y = velocities[1] if abs(velocities[1]) > DEADZONE else 0.0
         v_yaw = velocities[2] if abs(velocities[2]) > DEADZONE else 0.0
         # ------------------------------------
         
-        targets[:, 0] = v_x * 0.5  # Joystick Gauche Y -> Devant/Derrière
-        targets[:, 1] = - v_y * 0.5  # Joystick Gauche X -> Translation latérale
-        targets[:, 2] = - v_yaw * 0.5  # Joystick Droit X -> Pivot (Rotation)
+        targets[:, 0] = v_x * 0.5  # Left Joystick Y -> Forward/Backward
+        targets[:, 1] = - v_y * 0.5  # Left Joystick X -> Translation
+        targets[:, 2] = - v_yaw * 0.5  # Right Joystick X -> Rotation
         
-        # 2. MOUCHARD TERMINAL
         if targets[0].abs().max() > 0.01:
-            print(f"🕹️ ENTRÉE MANETTE | Avancer: {targets[0,0]:.2f} | Latéral: {targets[0,1]:.2f} | Rotation: {targets[0,2]:.2f}")
+            print(f"🕹️ Controller | Forward: {targets[0,0]:.2f} | Translation: {targets[0,1]:.2f} | Rotation: {targets[0,2]:.2f}")
 
-        # 3. APPLICATION FORCÉE DIRECTE DANS LES TENSEURS DU ROBOT
         if hasattr(env.unwrapped, "command_manager"):
             term = env.unwrapped.command_manager.get_term("base_velocity")
             term.command[:] = targets
             if hasattr(term, "vel_command_b"):
                 term.vel_command_b[:] = targets
 
-        # run everything in inference mode
         with torch.inference_mode():
             actions = policy(obs)
             obs, _, _, _ = env.step(actions)
@@ -208,12 +201,10 @@ def main():
             if timestep == args_cli.video_length:
                 break
 
-        # maintien du temps réel
         sleep_time = dt - (time.time() - start_time)
         if args_cli.real_time and sleep_time > 0:
             time.sleep(sleep_time)
 
-    # close the simulator
     env.close()
 
 

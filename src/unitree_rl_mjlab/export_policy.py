@@ -138,7 +138,7 @@ def main():
         dynamic_axes={'input_obs': {0: 'batch_size'}, 'output_actions': {0: 'batch_size'}}
     )
     print(f"✅ SUCCÈS : Politique exportée en ONNX vers : {output_file_onnx}")
-    print(f"👉 Kp/Kd/DEFAULT_DOF_POS/ACTION_SCALE inchangés dans g1_config.py. Pointe policy_path vers : {output_file_pt}")
+    print(f"👉 Kp/Kd/DEFAULT_POS/ACTION_SCALE inchangés dans g1_config.py. Pointe policy_path vers : {output_file_pt}")
 
 if __name__ == "__main__":
     main()

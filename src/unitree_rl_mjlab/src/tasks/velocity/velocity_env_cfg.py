@@ -254,7 +254,7 @@ def make_velocity_env_cfg() -> ManagerBasedRlEnvCfg:
       params={
         "asset_cfg": SceneEntityCfg("robot", geom_names=(".*ankle_roll.*",)),  # Set per-robot.
         "operation": "abs",
-        "ranges": (0.3, 1.6),
+        "ranges": (0.2, 1.8),
         "shared_random": True,  # All foot geoms share the same friction.
       },
     ),
@@ -288,17 +288,17 @@ def make_velocity_env_cfg() -> ManagerBasedRlEnvCfg:
   rewards = {
     "track_linear_velocity": RewardTermCfg(
       func=mdp.track_linear_velocity,
-      weight=2.0,
+      weight=1.0,
       params={"command_name": "twist", "std": math.sqrt(0.25)},
     ),
     "track_angular_velocity": RewardTermCfg(
       func=mdp.track_angular_velocity,
-      weight=2.0,
+      weight=1.0,
       params={"command_name": "twist", "std": math.sqrt(0.5)},
     ),
     "body_orientation_l2": RewardTermCfg(
       func=mdp.body_orientation_l2,
-      weight=-1.0,
+      weight=-2.0,
       params={"asset_cfg": SceneEntityCfg("robot", body_names=("torso_link"))},  # Set per-robot.
     ),
     "pose": RewardTermCfg(
@@ -342,7 +342,7 @@ def make_velocity_env_cfg() -> ManagerBasedRlEnvCfg:
     ),
     "foot_clearance": RewardTermCfg(
       func=mdp.feet_clearance,
-      weight=-1.0,
+      weight=-0.5,
       params={
         "target_height": 0.10,
         "command_name": "twist",

@@ -5,7 +5,7 @@ from scipy.spatial.transform import Rotation as R
 from unitree_sdk2py.idl.unitree_hg.msg.dds_ import LowState_
 from unitree_sdk2py.utils.crc import CRC
 
-# ── CONFIGURATION GÉNÉRALE ──
+# ── GENERAL CONFIG ──
 
 nbr_joints = 29     # Total number of controlled joints
 dt = 0.02           # Control loop at 50 Hz
@@ -88,7 +88,7 @@ positions = {
                          -90, 0, 0, 0, -90, 30, 0])
 }
 
-DEFAULT_DOF_POS = np.array([-0.312, 0, 0, 0.669, -0.363, 0,
+DEFAULT_POS = np.array([-0.312, 0, 0, 0.669, -0.363, 0,
                             -0.312, 0, 0, 0.669, -0.363, 0,
                             0, 0, 0,
                             0.2, 0.2, 0, 0.6, 0, 0, 0,
@@ -138,7 +138,7 @@ Kd = np.array([2.6, 6.3, 2.6, 6.3, 1.8, 1.8,
 
 ACTION_SCALE = np.array([   0.55,0.35,0.55,0.35,0.44,0.44,
                             0.55,0.35,0.55,0.35,0.44,0.44,
-                            0.55,0.44,0.44,                         # waist_roll/pitch=0.0 for waist lock (were 0.44/0.44)
+                            0.55,0.44,0.44,
                             0.44,0.44,0.44,0.44,0.44,0.07,0.07,
                             0.44,0.44,0.44,0.44,0.44,0.07,0.07
                             ],dtype=np.float32)

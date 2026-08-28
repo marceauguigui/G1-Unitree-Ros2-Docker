@@ -1,24 +1,15 @@
-"""Téléopération RL (RSL-RL + mjlab), pilotage par MODES (LOW/HIGH/RL/STOP) au
-CLAVIER (F1-F3, 4-8) ET à la manette PS5 (reproduit la logique de ps5_bridge.py,
-mais lu directement via pygame — plus de ROS2/rclpy nécessaire).
+"""RL teleoperation (RSL-RL + mjlab), MODE-based control (LOW/HIGH/RL/STOP) via
+KEYBOARD (F1-F3, 4-8) AND PS5 controller (mirrors ps5_bridge.py's logic, but
+read directly through pygame — no ROS2/rclpy needed).
 
-Mapping manette (reproduit ps5_bridge.py) :
-  PS            -> STOP immédiat (priorité maximale)
-  OPTIONS       -> mode suivant (LOW -> HIGH -> RL -> LOW ...)
-  SHARE         -> mode précédent
-  [mode HIGH]   CROSS=squat_workout, CIRCLE=coucou, TRIANGLE=stand,
-                SQUARE=chair, R2=stand (⚠️ "stand_isaac" n'existe plus, redirigé)
-  [mode LOW]    L1/R1=joint précédent/suivant, stick droit vertical=nudge joint
-  [mode RL]     stick gauche=vx/vy, stick droit horizontal=yaw
-
-⚠️ INDEX DE BOUTONS NON GARANTIS : ps5_bridge.py lisait /joy (driver ROS2), pygame/SDL
-peut numéroter différemment la même manette. Lance avec la variable d'environnement
-TELEOP_CALIBRATE=1 pour afficher l'index de chaque bouton pressé et ajuster les
-constantes BTN_* ci-dessous si le mapping ne correspond pas.
-
-Le mode RL reste inchangé par rapport au teleop.py d'origine : base_policy(obs)
-appelé directement sur l'observation mjlab réelle, aucune reconstruction manuelle.
-"""
+Controller mapping (mirrors ps5_bridge.py):
+  PS            -> immediate STOP (highest priority)
+  OPTIONS       -> next mode (LOW -> HIGH -> RL -> LOW ...)
+  SHARE         -> previous mode
+  [HIGH mode]   CROSS=squat_workout, CIRCLE=coucou, TRIANGLE=stand,
+                SQUARE=chair, R2=stand (⚠️ "stand_isaac" no longer exists, redirected)
+  [LOW mode]    L1/R1=previous/next joint, right stick vertical=joint nudge
+  [RL mode]     left stick=vx/vy, right stick horizontal=yaw"""
 
 import math
 import os
@@ -34,13 +25,13 @@ import tyro
 try:
     import pygame
 except ImportError:
-    print("[ERREUR] Pygame est requis pour la manette. Installez-le avec : pip install pygame")
+    print("[ERROR] Pygame is required for the controller. Install it with: pip install pygame")
     sys.exit(1)
 
 try:
     from pynput import keyboard as pynput_keyboard
 except ImportError:
-    print("[ERREUR] Pynput est requis pour le clavier global. Installez-le avec : pip install pynput")
+    print("[ERROR] Pynput is required for global keyboard input. Install it with: pip install pynput")
     sys.exit(1)
 
 from mjlab.envs import ManagerBasedRlEnv
@@ -52,7 +43,7 @@ from mjlab.viewer import NativeMujocoViewer, ViserPlayViewer
 
 CALIBRATE = os.environ.get("TELEOP_CALIBRATE") == "1"
 
-# ── Mapping boutons/axes PS5, repris de ps5_bridge.py — À VÉRIFIER (voir TELEOP_CALIBRATE) ──
+# ── PS5 button/axis mapping, taken from ps5_bridge.py ──
 BTN_CROSS    = 0
 BTN_CIRCLE   = 1
 BTN_TRIANGLE = 2
@@ -65,16 +56,16 @@ BTN_SHARE    = 8
 BTN_OPTIONS  = 9
 BTN_PS       = 10
 
-AXE_STICK_L_H = 0  # latéral (vy)
-AXE_STICK_L_V = 1  # avant/arrière (vx)
-AXE_STICK_R_H = 3  # yaw (mode RL)
-AXE_STICK_R_V = 4  # nudge joint (mode LOW)
+AXE_STICK_L_H = 0  # lateral (vy)
+AXE_STICK_L_V = 1  # forward/backward (vx)
+AXE_STICK_R_H = 3  # yaw (RL mode)
+AXE_STICK_R_V = 4  # joint nudge (LOW mode)
 
-AVAILABLE_MODES = ["LOW", "HIGH", "RL"]  # même liste/ordre que ps5_bridge.py (STOP = hors cycle, PS uniquement)
+AVAILABLE_MODES = ["LOW", "HIGH", "RL"]  # same list/order as ps5_bridge.py (STOP = out-of-cycle, PS button only)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Éléments recopiés directement depuis g1_config.py (aucune dépendance externe)
+# Elements copied directly from g1_config.py
 # ═══════════════════════════════════════════════════════════════════════════
 
 nbr_joints = 29
@@ -113,7 +104,7 @@ sequences = {
     "squat_workout": [("squat", 3.0), ("stand", 1.0)],
 }
 
-DEFAULT_DOF_POS = np.array([
+DEFAULT_POS = np.array([
     -0.312, 0, 0, 0.669, -0.363, 0,
     -0.312, 0, 0, 0.669, -0.363, 0,
     0, 0, 0,
@@ -176,8 +167,8 @@ class TeleopConfig:
 
 
 class TeleopInputReader:
-    """Manette (mapping PS5 complet, calqué sur ps5_bridge.py) + clavier global
-    (F1-F3, 4-8) en secours si aucune manette n'est détectée."""
+    """Controller (full PS5 mapping, mirrored from ps5_bridge.py) + global
+    keyboard fallback (F1-F3, 4-8) if no controller is detected."""
 
     _POSE_KEYS = {"4": "stand", "5": "squat", "6": "chair", "7": "coucou", "8": "squat_workout"}
 
@@ -190,14 +181,14 @@ class TeleopInputReader:
         if pygame.joystick.get_count() > 0:
             self.joystick = pygame.joystick.Joystick(0)
             self.joystick.init()
-            print(f"[INFO] Manette détectée : {self.joystick.get_name()} "
-                  f"({self.joystick.get_numbuttons()} boutons, {self.joystick.get_numaxes()} axes)")
+            print(f"[INFO] Controller detected: {self.joystick.get_name()} "
+                  f"({self.joystick.get_numbuttons()} buttons, {self.joystick.get_numaxes()} axes)")
         else:
-            print("[INFO] Aucune manette détectée. Clavier actif (F1-F3, 4-8).")
+            print("[INFO] No controller detected. Keyboard active (F1-F3, 4-8).")
 
         self.deadzone = deadzone
 
-        # Clavier
+        # Keyboard
         self._pressed_keys: set = set()
         self._prev_pressed_keys: set = set()
         self._listener = pynput_keyboard.Listener(
@@ -206,7 +197,7 @@ class TeleopInputReader:
         self._listener.daemon = True
         self._listener.start()
 
-        # Manette : état pour edge-detection + cycle de mode + joint sélectionné (mode LOW)
+        # Controller: state for edge-detection + mode cycling + selected joint (LOW mode)
         self._mode_cycle_idx = AVAILABLE_MODES.index("HIGH")
         self.selected_joint = 0
         self._prev_buttons: list[int] = []
@@ -226,7 +217,7 @@ class TeleopInputReader:
         return char_or_key in self._pressed_keys
 
     def get_commands(self):
-        """Vitesse pour le mode RL : manette (sticks) prioritaire, sinon clavier."""
+        """Velocity for RL mode: controller (sticks) takes priority, keyboard otherwise."""
         pygame.event.pump()
         cmd_x, cmd_y, cmd_yaw = 0.0, 0.0, 0.0
 
@@ -236,7 +227,7 @@ class TeleopInputReader:
             num_axes = self.joystick.get_numaxes()
             v_yaw = self.joystick.get_axis(AXE_STICK_R_H) if num_axes > AXE_STICK_R_H else 0.0
             if abs(v_x) > self.deadzone: cmd_x = -v_x
-            if abs(v_y) > self.deadzone: cmd_y = -v_y * 0.8  # même facteur 0.8 que ps5_bridge.py
+            if abs(v_y) > self.deadzone: cmd_y = -v_y * 0.8  # same 0.8 factor as ps5_bridge.py
             if abs(v_yaw) > self.deadzone: cmd_yaw = -v_yaw
 
         if cmd_x == 0.0 and cmd_y == 0.0 and cmd_yaw == 0.0:
@@ -252,7 +243,7 @@ class TeleopInputReader:
         return cmd_x, cmd_y, cmd_yaw
 
     def poll_mode_and_pose(self):
-        """Clavier : F1/F2/F3 (mode) + 4-8 (poses/séquences), front montant."""
+        """Keyboard: F1/F2/F3 (mode) + 4-8 (poses/sequences), rising edge."""
         current = set(self._pressed_keys)
         new_keys = current - self._prev_pressed_keys
         self._prev_pressed_keys = current
@@ -271,7 +262,8 @@ class TeleopInputReader:
         return mode, pose
 
     def poll_gamepad_events(self):
-        """Manette : reproduit ps5_bridge.py. Retourne (stop, mode, pose, joint_select_delta, joint_move_val)."""
+        """Controller: mirrors ps5_bridge.py. Returns
+        (stop, mode, pose, joint_select_delta, joint_move_val)."""
         stop = False
         mode = None
         pose = None
@@ -296,15 +288,15 @@ class TeleopInputReader:
         if CALIBRATE:
             for i in range(nbtn):
                 if buttons[i] == 1 and self._prev_buttons[i] == 0:
-                    print(f"[CALIBRATE] Bouton pressé : index {i}")
+                    print(f"[CALIBRATE] Button pressed: index {i}")
 
         current_mode = AVAILABLE_MODES[self._mode_cycle_idx]
 
-        # 1. STOP (priorité maximale)
+        # 1. STOP (highest priority)
         if pressed(BTN_PS):
             stop = True
 
-        # 2. Cycle de mode
+        # 2. Mode cycling
         if just_pressed(BTN_OPTIONS):
             self._mode_cycle_idx = (self._mode_cycle_idx + 1) % len(AVAILABLE_MODES)
             mode = AVAILABLE_MODES[self._mode_cycle_idx]
@@ -312,7 +304,7 @@ class TeleopInputReader:
             self._mode_cycle_idx = (self._mode_cycle_idx - 1) % len(AVAILABLE_MODES)
             mode = AVAILABLE_MODES[self._mode_cycle_idx]
 
-        # 3. Poses/séquences (mode HIGH)
+        # 3. Poses/sequences (HIGH mode)
         if current_mode == "HIGH":
             if pressed(BTN_CROSS):
                 pose = "squat_workout"
@@ -323,22 +315,22 @@ class TeleopInputReader:
             elif pressed(BTN_SQUARE):
                 pose = "chair"
 
-        # 4. Sélection + nudge joint (mode LOW)
+        # 4. Joint selection + nudge (LOW mode)
         if current_mode == "LOW":
             if just_pressed(BTN_L1):
                 joint_select_delta = -1
                 self.selected_joint = (self.selected_joint - 1) % nbr_joints
-                print(f"[INFO] Joint sélectionné : {dico_joints_inv[self.selected_joint]} (ID {self.selected_joint})")
+                print(f"[INFO] Selected joint: {dico_joints_inv[self.selected_joint]} (ID {self.selected_joint})")
             if just_pressed(BTN_R1):
                 joint_select_delta = 1
                 self.selected_joint = (self.selected_joint + 1) % nbr_joints
-                print(f"[INFO] Joint sélectionné : {dico_joints_inv[self.selected_joint]} (ID {self.selected_joint})")
+                print(f"[INFO] Selected joint: {dico_joints_inv[self.selected_joint]} (ID {self.selected_joint})")
 
             num_axes = self.joystick.get_numaxes()
             if num_axes > AXE_STICK_R_V:
                 axis_val = self.joystick.get_axis(AXE_STICK_R_V)
                 if abs(axis_val) > 0.1:
-                    joint_move_val = axis_val * 0.5 * 0.02  # même échelle que ps5_bridge.py + g1_ros2_controller
+                    joint_move_val = axis_val * 0.5 * 0.02  # same scale as ps5_bridge.py + g1_ros2_controller
 
         self._prev_buttons = buttons
         return stop, mode, pose, joint_select_delta, joint_move_val
@@ -362,21 +354,21 @@ def verify_joint_order(env) -> bool:
             continue
 
     if names is None:
-        print("\n[⚠️  AVERTISSEMENT] Impossible de retrouver automatiquement l'ordre des "
-            "joints exposé par l'environnement mjlab. Les modes LOW/HIGH/STOP supposent "
-            "un ordre identique à dico_joints (ordre SDK) — vérifie manuellement. Le "
-            "mode RL n'est pas affecté par cette incertitude.\n")
+        print("\n[⚠️  WARNING] Could not automatically retrieve the joint order "
+            "exposed by the mjlab environment. LOW/HIGH/STOP modes assume "
+            "an order identical to dico_joints (SDK order) — verify manually. "
+            "RL mode is not affected by this uncertainty.\n")
         return False
 
     expected = [dico_joints_inv[i] for i in range(nbr_joints)]
-    print("\n[VÉRIFICATION ORDRE DES JOINTS]")
-    print(f"  Attendu (SDK)                   : {expected}")
-    print(f"  Trouvé  (env mjlab, {len(names)} joints) : {names}")
+    print("\n[JOINT ORDER VERIFICATION]")
+    print(f"  Expected (SDK)                  : {expected}")
+    print(f"  Found    (mjlab env, {len(names)} joints) : {names}")
     if len(names) != nbr_joints:
-        print(f"[⚠️  AVERTISSEMENT] Nombre de joints différent ({len(names)} vs {nbr_joints}) !")
+        print(f"[⚠️  WARNING] Different number of joints ({len(names)} vs {nbr_joints})!")
         return False
-    print("  -> Compare ces deux listes toi-même avant de faire confiance aux modes\n"
-          "     HIGH/LOW/STOP (le mode RL n'est pas concerné).\n")
+    print("  -> Compare these two lists yourself before trusting the\n"
+          "     HIGH/LOW/STOP modes (RL mode is not affected).\n")
     return True
 
 
@@ -387,7 +379,7 @@ class HybridPolicyWrapper:
         self.gamepad = gamepad
         self.device = device
 
-        self.default_dof_pos = torch.tensor(DEFAULT_DOF_POS, dtype=torch.float32, device=device)
+        self.default_pos = torch.tensor(DEFAULT_POS, dtype=torch.float32, device=device)
         self.action_scale = torch.tensor(ACTION_SCALE, dtype=torch.float32, device=device)
         self.mins_np = np.array([lim[0] for lim in JOINTS_MIN_MAX], dtype=np.float32)
         self.maxs_np = np.array([lim[1] for lim in JOINTS_MIN_MAX], dtype=np.float32)
@@ -408,7 +400,7 @@ class HybridPolicyWrapper:
 
         if hasattr(self.env.unwrapped, "command_manager"):
             self.env.unwrapped.command_manager.compute = lambda *args, **kwargs: None
-            print("[INFO] Gestionnaire de commandes automatiques désactivé (Mode Manuel ON).")
+            print("[INFO] Automatic command manager disabled (Manual Mode ON).")
 
     def _read_joint_pos_np(self) -> np.ndarray:
         candidates = [
@@ -422,14 +414,14 @@ class HybridPolicyWrapper:
             except Exception:
                 continue
         raise RuntimeError(
-            "Impossible de lire joint_pos depuis l'environnement mjlab. Inspecte "
-            "`env.unwrapped.scene` toi-même et ajuste _read_joint_pos_np()."
+            "Could not read joint_pos from the mjlab environment. Inspect "
+            "`env.unwrapped.scene` yourself and adjust _read_joint_pos_np()."
         )
 
     def _target_to_action(self, target_np: np.ndarray) -> torch.Tensor:
         target_np = np.clip(target_np, self.mins_np, self.maxs_np)
         target_t = torch.tensor(target_np, dtype=torch.float32, device=self.device)
-        action = (target_t - self.default_dof_pos) / self.action_scale
+        action = (target_t - self.default_pos) / self.action_scale
         return action.unsqueeze(0)
 
     def _set_mode(self, new_mode: str):
@@ -440,10 +432,10 @@ class HybridPolicyWrapper:
             print(f"\n[INFO] Mode -> {self.control_mode}")
 
     def __call__(self, obs):
-        # ── Clavier (toujours actif, secours si pas de manette) ──
+        # ── Keyboard (always active, fallback if no controller) ──
         kb_mode, kb_pose = self.gamepad.poll_mode_and_pose()
 
-        # ── Manette (prioritaire si présente) ──
+        # ── Controller (takes priority if present) ──
         gp_stop, gp_mode, gp_pose, _joint_sel_delta, joint_move_val = self.gamepad.poll_gamepad_events()
 
         q_np = self._read_joint_pos_np()
@@ -454,7 +446,7 @@ class HybridPolicyWrapper:
             self._low_target_np = q_np.copy()
             self._last_mode = self.control_mode
 
-        # STOP a la priorité absolue (clavier F3 ou bouton PS)
+        # STOP has absolute priority (keyboard F3 or PS button)
         if gp_stop or kb_mode == "STOP":
             self._set_mode("STOP")
         elif gp_mode is not None:
@@ -512,7 +504,7 @@ class HybridPolicyWrapper:
 
             return self._target_to_action(self._high_start_pos)
 
-        # ── RL : chemin d'origine, inchangé ──
+        # ── RL: original path, unchanged ──
         cmd_x, cmd_y, cmd_yaw = self.gamepad.get_commands()
 
         if hasattr(self.env.unwrapped, "command_manager"):
@@ -530,7 +522,7 @@ class HybridPolicyWrapper:
                     term.vel_command_b[:, 2] = cmd_yaw * 1.0
 
         if abs(cmd_x) > 0.01 or abs(cmd_y) > 0.01 or abs(cmd_yaw) > 0.01:
-            print(f"🕹️ RL | Avancer: {cmd_x:.2f} | Latéral: {cmd_y:.2f} | Rotation: {cmd_yaw:.2f}      ", end="\r")
+            print(f"🕹️ RL | Forward: {cmd_x:.2f} | Lateral: {cmd_y:.2f} | Rotation: {cmd_yaw:.2f}      ", end="\r")
 
         # o = obs["actor"]
         # print(f"[mjlab] base_lin_vel={o[0,0:3].tolist()}")
@@ -564,23 +556,23 @@ def run_teleop(task_id: str, cfg: TeleopConfig):
         resume_path = Path(cfg.checkpoint_file)
         if not resume_path.exists():
             raise FileNotFoundError(f"Checkpoint file not found: {resume_path}")
-        print(f"[INFO]: Chargement manuel: {resume_path.name}")
+        print(f"[INFO]: Manual load: {resume_path.name}")
     elif cfg.wandb_run_path is not None:
         resume_path, _ = get_wandb_checkpoint_path(log_root_path, Path(cfg.wandb_run_path))
-        print(f"[INFO]: Chargement W&B: {resume_path.name}")
+        print(f"[INFO]: W&B load: {resume_path.name}")
     else:
-        print("[INFO]: Aucun checkpoint précisé. Recherche automatique du dernier modèle...")
+        print("[INFO]: No checkpoint specified. Automatically searching for the latest model...")
         if not log_root_path.exists():
-            raise ValueError(f"Le dossier racine {log_root_path} n'existe pas. Avez-vous entraîné le robot ?")
+            raise ValueError(f"Root folder {log_root_path} does not exist. Have you trained the robot?")
         run_dirs = sorted([d for d in log_root_path.iterdir() if d.is_dir()], key=os.path.getmtime)
         if not run_dirs:
-            raise ValueError(f"Aucun entraînement trouvé dans {log_root_path}")
+            raise ValueError(f"No training run found in {log_root_path}")
         latest_run = run_dirs[-1]
         checkpoints = sorted(latest_run.glob("model_*.pt"), key=os.path.getmtime)
         if not checkpoints:
-            raise ValueError(f"Aucun fichier model_*.pt trouvé dans {latest_run}")
+            raise ValueError(f"No model_*.pt file found in {latest_run}")
         resume_path = checkpoints[-1]
-        print(f"[INFO]: ✅ Chargement du dernier checkpoint : {resume_path}")
+        print(f"[INFO]: ✅ Loading latest checkpoint: {resume_path}")
 
     if cfg.num_envs is not None:
         env_cfg.scene.num_envs = cfg.num_envs
@@ -597,15 +589,15 @@ def run_teleop(task_id: str, cfg: TeleopConfig):
     verify_joint_order(env)
 
     print("\n" + "=" * 55)
-    print("[INFO] CONTRÔLES DU G1 :")
-    print("  Manette : PS=STOP | OPTIONS/SHARE=cycle mode (LOW<->HIGH<->RL)")
+    print("[INFO] G1 CONTROLS:")
+    print("  Controller: PS=STOP | OPTIONS/SHARE=cycle mode (LOW<->HIGH<->RL)")
     print("    HIGH : CROSS=squat_workout CIRCLE=coucou TRIANGLE=stand SQUARE=chair R2=stand")
-    print("    LOW  : L1/R1=joint préc/suiv, stick droit vertical=nudge")
-    print("    RL   : stick gauche=vx/vy, stick droit horizontal=yaw")
-    print("  Clavier (secours) : F1=HIGH F2=RL F3=STOP | 4-8=poses/séquences")
-    print("  Démarrage : mode HIGH.")
+    print("    LOW  : L1/R1=prev/next joint, right stick vertical=nudge")
+    print("    RL   : left stick=vx/vy, right stick horizontal=yaw")
+    print("  Keyboard (fallback): F1=HIGH F2=RL F3=STOP | 4-8=poses/sequences")
+    print("  Startup: HIGH mode.")
     if CALIBRATE:
-        print("  [MODE CALIBRATION ACTIF] Les index de boutons pressés s'affichent en direct.")
+        print("  [CALIBRATION MODE ACTIVE] Pressed button indices are displayed live.")
     print("=" * 55 + "\n")
 
     teleop_input = TeleopInputReader(deadzone=0.1)

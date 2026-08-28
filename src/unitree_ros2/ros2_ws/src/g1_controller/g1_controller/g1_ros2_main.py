@@ -23,7 +23,7 @@ from unitree_hg.msg import LowCmd, LowState, MotorCmd
 from std_msgs.msg import String, Float32MultiArray
 from g1_controller import g1_config
 from g1_controller.g1_config import (nbr_joints, dt, dico_joints, dico_joints_inv, JOINTS_MIN_MAX, positions_rad,
-                                     sequences, Kp, Kd, ACTION_SCALE, DEFAULT_DOF_POS,)
+                                     sequences, Kp, Kd, ACTION_SCALE, DEFAULT_POS,)
 
 EXPECTED_OBS_DIM = 99  # 99 for flat policy, no height_scan
 
@@ -60,7 +60,7 @@ class G1Ros2Controller(Node):
     
         # ── RL policy & related state ──
         self.policy = None
-        self.default_dof_pos = DEFAULT_DOF_POS                          # Default position used in the Reinforcement Learning
+        self.default_pos = DEFAULT_POS                          # Default position used in the Reinforcement Learning
         self.action_scale = ACTION_SCALE                                # Action scale used in the Reinforcement Learning
         self.last_action = np.zeros(nbr_joints)                         # Previous action
         self.command_vel = np.zeros(3, dtype=np.float32)                # Velocity input
@@ -69,7 +69,7 @@ class G1Ros2Controller(Node):
         self.history_length = 1                                         # Number of stacked observation frames
         self.obs_buffer = collections.deque(maxlen=self.history_length) # Buffer of past observations
 
-        policy_path = "src/g1_exported_policies/isaac_policy_flat.pt"     # UPDATE THIS PATH to the .pt wanted
+        policy_path = "src/g1_exported_policies/mj_policy_flat.pt"     # UPDATE THIS PATH to the .pt wanted
         try:
             if os.path.exists(policy_path):
                 self.policy = torch.jit.load(policy_path)                                   # Load the exported TorchScript policy
@@ -92,14 +92,14 @@ class G1Ros2Controller(Node):
     # ── CALLBACKS ──────────────────────────────────────────────────────────
 
     def _base_lin_vel_sim_callback(self, msg: Float32MultiArray):
-        self.base_lin_vel = np.array(msg.data, dtype=np.float32)    # Update base linear velocity from the simulator
+        self.base_lin_vel = np.array(msg.data, dtype=np.float32)    # Updates base linear velocity from the simulator
 
     def state_callback(self, msg: LowState):
         g1_config.low_state = msg                                                                   # Store latest low level state
         if self.current_position is None:
             self.current_position = np.array([msg.motor_state[i].q for i in range(nbr_joints)])     # Capture starting position at the beginning
             self.target_position = np.copy(self.current_position)                                   # Target = current at boot to avoid a jump
-            self.get_logger().info("First position captured!")  
+            self.get_logger().info("First position captured!")
 
     def command_callback(self, msg: String):
         if not msg.data or msg.data == "idle":
@@ -217,7 +217,7 @@ class G1Ros2Controller(Node):
                 motor_cmd.mode = 1
                 motor_cmd.q = float(g1_config.low_state.motor_state[i].q)
                 motor_cmd.kp = 0.0  # zero stiffness
-                motor_cmd.kd = 2.0  # safety damping to resist free fall
+                motor_cmd.kd = 1.0  # safety damping to resist free fall
                 cmd.motor_cmd[i] = motor_cmd
             self.cmd_pub.publish(cmd)
             return
@@ -252,7 +252,7 @@ class G1Ros2Controller(Node):
             dq = np.array([g1_config.low_state.motor_state[i].dq for i in range(nbr_joints)], dtype=np.float32)     # Current joint velocities
             ang_vel = np.array(g1_config.low_state.imu_state.gyroscope, dtype=np.float32)                           # Base angular velocity
             projected_gravity = g1_config.get_projected_gravity(quat)                                               # Gravity vector expressed in the base frame
-            joint_pos_rel = (q - self.default_dof_pos).astype(np.float32)                                           # Joint positions relative to the default pose
+            joint_pos_rel = (q - self.default_pos).astype(np.float32)                                           # Joint positions relative to the default pose
             joint_vel_rel = dq.astype(np.float32)                                                                   # Joint velocities (already relative)
             base_lin_vel_local = self.base_lin_vel.copy()                                                           # Base linear velocity, local frame
 
@@ -281,15 +281,15 @@ class G1Ros2Controller(Node):
 
             mins = np.array([x[0] for x in JOINTS_MIN_MAX], dtype=np.float32)           # Hardware lower limits
             maxs = np.array([x[1] for x in JOINTS_MIN_MAX], dtype=np.float32)           # Hardware upper limits
-            actions_min = (mins - self.default_dof_pos) / self.action_scale             # Lower limits expressed in action space
-            actions_max = (maxs - self.default_dof_pos) / self.action_scale             # Upper limits expressed in action space
+            actions_min = (mins - self.default_pos) / self.action_scale             # Lower limits expressed in action space
+            actions_max = (maxs - self.default_pos) / self.action_scale             # Upper limits expressed in action space
             actions = np.clip(actions, actions_min, actions_max)                        # Prevent an out-of-range joint target
 
             if round(self.clock, 2) % 1 == 0:
                 self.get_logger().info(f"RL actions -> min: {actions.min():.2f}, max: {actions.max():.2f}")
             self.last_action = actions                                                  # Stored for next tick's observation
 
-            self.target_position = self.default_dof_pos + actions * self.action_scale   # Convert the policy action into a joint target
+            self.target_position = self.default_pos + actions * self.action_scale   # Convert the policy action into a joint target
 
         # ── CLAMP TARGETS to safe hardware limits ──
         mins = [limit[0] for limit in JOINTS_MIN_MAX]

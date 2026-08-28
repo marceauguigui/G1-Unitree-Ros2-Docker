@@ -3,6 +3,7 @@ from launch.actions import DeclareLaunchArgument, ExecuteProcess
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
+from launch.actions import SetEnvironmentVariable
 import os
 
 def generate_launch_description():
@@ -12,10 +13,12 @@ def generate_launch_description():
         description='Launch mode : sim or real'
     )
 
-    mode = LaunchConfiguration('mode')
+    config = LaunchConfiguration('config')
 
-    is_sim = IfCondition(PythonExpression(["'", mode, "' == 'sim'"]))
-    is_real = IfCondition(PythonExpression(["'", mode, "' == 'real'"]))
+    is_sim = IfCondition(PythonExpression(["'", config, "' == 'sim'"]))
+    is_real = IfCondition(PythonExpression(["'", config, "' == 'real'"]))
+    SetEnvironmentVariable('ROS_DOMAIN_ID', '1', condition=is_sim),
+    SetEnvironmentVariable('ROS_DOMAIN_ID', '0', condition=is_real),
     
     return LaunchDescription([
         mode_arg,
@@ -41,7 +44,7 @@ def generate_launch_description():
             executable='g1_ros2_main',
             name='g1_ros2_main',
             output='screen',
-            parameters=[{'mode': mode}]
+            parameters=[{'config': config}]
         ),
 
         Node(
