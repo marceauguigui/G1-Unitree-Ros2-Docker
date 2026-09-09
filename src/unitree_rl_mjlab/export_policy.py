@@ -16,7 +16,7 @@ def flatten_state_dict(d, parent_key='', sep='.'):
 
 def main():
     checkpoint_path = os.path.expanduser(
-        "/home/noar/G1-Unitree-Ros2-Docker/src/unitree_rl_mjlab/logs/rsl_rl/g1_velocity/2026-09-03_16-34-24/model_49999.pt"
+        "/home/noar/G1-Unitree-Ros2-Docker/src/unitree_rl_mjlab/logs/rsl_rl/g1_velocity/2026-09-03_16-34-24_flat2/model_49999.pt"
     )
 
     output_dir = os.path.expanduser("~/G1-Unitree-Ros2-Docker/src/g1_exported_policies")

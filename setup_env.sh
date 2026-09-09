@@ -51,23 +51,35 @@ export UNITREE_RL_MJLAB_DIR="$HOME/G1-Unitree-Ros2-Docker/src/unitree_rl_mjlab"
 
 alias mjlab="conda activate mjlab"
 
-# Start new training (flat)
+# Start new training
+# (flat)
 alias g1mjtrain="cd $UNITREE_RL_MJLAB_DIR && python scripts/train.py Mjlab-Velocity-Flat-Unitree-G1 --env.scene.num-envs=4096 --agent.max-iterations 50000"
-
-# Resume training (flat)
-alias g1mjresume="cd $UNITREE_RL_MJLAB_DIR && python scripts/train.py Mjlab-Velocity-Flat-Unitree-G1 --env.scene.num-envs=4096 --agent.resume True --agent.max-iterations 50000"
-
-# Observe training (1 env, flat)
-alias g1mjplay='cd $UNITREE_RL_MJLAB_DIR && python scripts/play.py Mjlab-Velocity-Flat-Unitree-G1 --checkpoint-file $(ls -t logs/rsl_rl/g1_velocity/*/model_*.pt | head -n 1)'
-
-# Control training (1 env, flat)
-alias g1mjteleop='cd $UNITREE_RL_MJLAB_DIR && python scripts/teleop.py Mjlab-Velocity-Flat-Unitree-G1 --checkpoint-file $(ls -t logs/rsl_rl/g1_velocity/*/model_*.pt | head -n 1)'
-
-# --- Same for rough terrain ---
+# (rough)
 alias g1mjtrainrough="cd $UNITREE_RL_MJLAB_DIR && python scripts/train.py Mjlab-Velocity-Rough-Unitree-G1 --env.scene.num-envs=1024 --agent.max-iterations 50000"
+#(crawl flat)
+alias g1mjtraincrawl="cd \$UNITREE_RL_MJLAB_DIR && python scripts/train.py Mjlab-Crawling-Unitree-G1 --env.scene.num-envs=4096 --agent.max-iterations 50000"
 
+# Resume training
+# (flat)
+alias g1mjresume="cd $UNITREE_RL_MJLAB_DIR && python scripts/train.py Mjlab-Velocity-Flat-Unitree-G1 --env.scene.num-envs=4096 --agent.resume True --agent.max-iterations 50000"
+# (rough)
 alias g1mjresumerough="cd $UNITREE_RL_MJLAB_DIR && python scripts/train.py Mjlab-Velocity-Rough-Unitree-G1 --env.scene.num-envs=1024 --agent.resume True --agent.max-iterations 50000"
+# (crawl flat)
+alias g1mjresumecrawl="cd \$UNITREE_RL_MJLAB_DIR && python scripts/train.py Mjlab-Crawling-Unitree-G1 --env.scene.num-envs=4096 --agent.resume True --agent.max-iterations 50000"
 
+# Observe training (1 env)
+# (flat)
+alias g1mjplay='cd $UNITREE_RL_MJLAB_DIR && python scripts/play.py Mjlab-Velocity-Flat-Unitree-G1 --checkpoint-file $(ls -t logs/rsl_rl/g1_velocity/*/model_*.pt | head -n 1)'
+# (rough)
 alias g1mjplayrough='cd $UNITREE_RL_MJLAB_DIR && python scripts/play.py Mjlab-Velocity-Rough-Unitree-G1 --checkpoint-file $(ls -t logs/rsl_rl/g1_velocity/*/model_*.pt | head -n 1)'
+# (crawl flat)
+alias g1mjplaycrawl='cd $UNITREE_RL_MJLAB_DIR && python scripts/play.py Mjlab-Crawling-Unitree-G1 --checkpoint-file $(ls -t logs/rsl_rl/g1_crawling/*/model_*.pt | head -n 1)'
 
+
+# Control training (1 env)
+#(flat)
+alias g1mjteleop='cd $UNITREE_RL_MJLAB_DIR && python scripts/teleop.py Mjlab-Velocity-Flat-Unitree-G1 --checkpoint-file $(ls -t logs/rsl_rl/g1_velocity/*/model_*.pt | head -n 1)'
+# (rough)
 alias g1mjteleoprough='cd $UNITREE_RL_MJLAB_DIR && python scripts/teleop.py Mjlab-Velocity-Rough-Unitree-G1 --checkpoint-file $(ls -t logs/rsl_rl/g1_velocity/*/model_*.pt | head -n 1)'
+# (crawl flat)
+alias g1mjteleopcrawl='cd $UNITREE_RL_MJLAB_DIR && python scripts/teleop_crawl.py Mjlab-Crawling-Unitree-G1 --checkpoint-file $(ls -t logs/rsl_rl/g1_crawling/*/model_*.pt | head -n 1)'

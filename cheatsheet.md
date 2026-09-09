@@ -1,23 +1,28 @@
 # DOCKER COMMANDS
 
-# Démarrer l'environnement en arrière-plan (None -> Created -> Running) :
+# Start the environment in the background (None -> Created -> Running):
 docker compose up -d
 
-# Reconstruire l'image (Dockerfile modif -> Rebuild -> Running) :
+# Rebuild the image (Dockerfile modified -> Rebuild -> Running):
 xhost +local:docker
 docker compose up -d --build
 
-# Entrer dans le conteneur Docker (Running -> Open Terminal) :
+# Enter the Docker container (Running -> Open Terminal):
 docker compose exec ros2_foxy bash
 
-# Arrêter complètement le conteneur (Running -> Exited -> Removed) :
+# Fully stop the container (Running -> Exited -> Removed):
 docker compose down
 
-# ATTENTION LA MANETTE DOIT ETRE CONNECTE AU MOMENT DE LANCER LE DOCKER POUR QU'IL LA DETECTE
+# WARNING: THE CONTROLLER MUST BE CONNECTED WHEN LAUNCHING DOCKER FOR IT TO BE DETECTED
 
 ______________________________________________________________________________________________
 
 # ROS2 COMMANDS
+
+# LAUNCH FILE
+
+ros2 launch g1_controller g1.launch.py config:=sim
+ros2 launch g1_controller g1.launch.py config:=real
 
 # TERMINAL 1
 ros2 run joy joy_node
@@ -30,20 +35,6 @@ cd /ros2_ws/src/unitree_mujoco/simulate_python
 python3 unitree_mujoco.py
 # TERMINAL 4 REAL
 ros2 run g1_controller real_g1_bridge
-
-# Exemples of publishers
-
-ros2 topic pub --once /command std_msgs/msg/String "data: 'mode LOW'"
-ros2 topic pub --once /command std_msgs/msg/String "data: 'joint knee_pitch_l 3.0'"
-ros2 topic pub --once /command std_msgs/msg/String "data: 'joint 0 40.0'"
-
-ros2 topic pub --once /command std_msgs/msg/String "data: 'mode HIGH'"
-ros2 topic pub --once /command std_msgs/msg/String "data: 'stand'"
-
-# LAUNCH FILE
-
-ros2 launch g1_controller g1.launch.py mode:=sim
-ros2 launch g1_controller g1.launch.py mode:=real
 
 ______________________________________________________________________________________________
 
@@ -61,10 +52,6 @@ python scripts/play.py Mjlab-Velocity-Flat-Unitree-G1 --checkpoint-file $(ls -t 
 python scripts/teleop.py Mjlab-Velocity-Flat-Unitree-G1 --checkpoint-file $(ls -t logs/rsl_rl/g1_velocity/*/model_*.pt | head -n 1)
 
 #WORKING
-
-
-tensorboard --logdir=logs/
-
 ______________________________________________________________________________________________
 
 # ISAACLAB RAW COMMANDS
@@ -82,5 +69,7 @@ python scripts/rsl_rl/teleop.py --task Unitree-G1-29dof-Velocity --num_envs 1
 
 #WORKING
 python scripts/rsl_rl/teleop.py --task Unitree-G1-29dof-Velocity --checkpoint ${workspaceFolder}/src/unitree_rl_lab/logs/rsl_rl/unitree_g1_29dof_velocity/2026-07-24_15-55-15/model_89999.pt --num_envs 1
+
+# Data from RL
 
 tensorboard --logdir=logs/

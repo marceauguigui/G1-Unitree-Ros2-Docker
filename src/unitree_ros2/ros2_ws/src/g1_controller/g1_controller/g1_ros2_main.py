@@ -69,7 +69,7 @@ class G1Ros2Controller(Node):
         self.history_length = 1                                         # Number of stacked observation frames
         self.obs_buffer = collections.deque(maxlen=self.history_length) # Buffer of past observations
 
-        policy_path = "src/g1_exported_policies/mj_policy_flat.pt"     # UPDATE THIS PATH to the .pt wanted
+        policy_path = "src/g1_exported_policies/mj_policy_flat2.pt"     # UPDATE THIS PATH to the .pt wanted
         try:
             if os.path.exists(policy_path):
                 self.policy = torch.jit.load(policy_path)                                   # Load the exported TorchScript policy
@@ -118,6 +118,16 @@ class G1Ros2Controller(Node):
         # 1. MODE SWITCH
         elif cmd_text[0] == "mode":
             next_mode = cmd_text[1].upper()     # Requested control mode
+            if self.control_mode == "STOP":
+                if g1_config.low_state is not None:
+                    self.current_position = np.array([g1_config.low_state.motor_state[i].q for i in range(nbr_joints)])
+                    self.target_position = np.copy(self.current_position)     # Zero error, exactly like boot
+                self.control_mode = "LOW"
+                self.time = 0.0
+                self.current_cmd = "idle"
+                self.active_sequence = None
+                self.get_logger().info("Exiting STOP -> LOW mode (position re-synced, zero error).")
+                return
             if next_mode != self.control_mode:
                 if next_mode == "RL" and self.policy is None:
                     self.get_logger().error("Cannot switch to RL mode: no policy loaded!")

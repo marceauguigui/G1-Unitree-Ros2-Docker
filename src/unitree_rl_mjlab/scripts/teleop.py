@@ -7,8 +7,7 @@ Controller mapping (mirrors ps5_bridge.py):
   OPTIONS       -> next mode (LOW -> HIGH -> RL -> LOW ...)
   SHARE         -> previous mode
   [LOW mode]    L1/R1=previous/next joint, right stick vertical=joint nudge
-  [HIGH mode]   CROSS=squat_workout, CIRCLE=coucou, TRIANGLE=stand,
-                  SQUARE=chair, R2=stand (⚠️ "stand_isaac" no longer exists, redirected)
+  [HIGH mode]   CROSS=squat_workout, CIRCLE=coucou, TRIANGLE=stand, SQUARE=chair, R2=stand
   [RL mode]     left stick=vx/vy, right stick horizontal=yaw"""
 
 import math

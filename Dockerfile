@@ -2,7 +2,7 @@ FROM osrf/ros:foxy-desktop
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Outils indispensables pour ROS2, le dev et les dépendances Unitree/MuJoCo
+# Essential tools for ROS2, development, and Unitree/MuJoCo dependencies
 RUN apt-get update && apt-get install -y \
     tmux \
     git \
@@ -27,21 +27,21 @@ RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/wh
 
 WORKDIR /ros2_ws
 
-# Sourcing automatique de l'environnement ROS2 de base
+# Automatically source the base ROS2 environment
 RUN echo "source /opt/ros/foxy/setup.bash" >> /root/.bashrc
 
-# Injection des variables d'environnement et alias propres au Docker
+# Inject Docker-specific environment variables and aliases
 RUN echo 'export RCUTILS_CONSOLE_OUTPUT_FORMAT="[{severity}] [{name}]: {message}"' >> /root/.bashrc && \
     echo 'export ROS_DOMAIN_ID=1' >> /root/.bashrc && \
     echo 'export ROS_LOCALHOST_ONLY=1' >> /root/.bashrc && \
     echo 'alias brc="nano /root/.bashrc"' >> /root/.bashrc && \
     echo 'alias sbrc="source /root/.bashrc"' >> /root/.bashrc
 
-# Raccourcis ROS 2
-RUN echo 'g1_load() { cd /ros2_ws && [ -f install/setup.bash ] && source install/setup.bash && echo "Environnement G1 chargé."; }' >> /root/.bashrc
-RUN echo 'cb() { cd /ros2_ws && colcon build --symlink-install "$@" && [ -f install/setup.bash ] && source install/setup.bash && echo "Compilation terminée et environnement sourcé."; }' >> /root/.bashrc
+# ROS 2 shortcuts
+RUN echo 'g1_load() { cd /ros2_ws && [ -f install/setup.bash ] && source install/setup.bash && echo "G1 environment loaded."; }' >> /root/.bashrc
+RUN echo 'cb() { cd /ros2_ws && colcon build --symlink-install "$@" && [ -f install/setup.bash ] && source install/setup.bash && echo "Build finished and environment sourced."; }' >> /root/.bashrc
 
-# Rétablir CycloneDDS sur la boucle locale (remplace FastDDS)
+# Restore CycloneDDS on the local loopback (replaces FastDDS)
 ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 ENV CYCLONEDDS_URI="<CycloneDDS><Domain><General><NetworkInterfaceAddress>lo</NetworkInterfaceAddress></General></Domain></CycloneDDS>"
 

@@ -6,9 +6,8 @@ Controller mapping (mirrors ps5_bridge.py):
   PS            -> immediate STOP (highest priority)
   OPTIONS       -> next mode (LOW -> HIGH -> RL -> LOW ...)
   SHARE         -> previous mode
-  [HIGH mode]   CROSS=squat_workout, CIRCLE=coucou, TRIANGLE=stand,
-                SQUARE=chair, R2=stand (⚠️ "stand_isaac" no longer exists, redirected)
   [LOW mode]    L1/R1=previous/next joint, right stick vertical=joint nudge
+  [HIGH mode]   CROSS=squat_workout, CIRCLE=coucou, TRIANGLE=stand, SQUARE=chair, R2=stand
   [RL mode]     left stick=vx/vy, right stick horizontal=yaw
   [RL mode]     D-pad up/down=crouch height (only if the task exposes it,
                 see env.crouch_target — no effect on tasks without crouch)"""

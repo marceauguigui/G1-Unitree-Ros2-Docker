@@ -66,7 +66,7 @@ G1-Unitree-Ros2-Docker/
 │   │   └── ros2_ws/src/g1_controller/
 │   │       ├── g1_controller/
 │   │       │   ├── g1_ros2_main.py       # main real-time controller (LOW/HIGH/RL/STOP)
-│   │       │   ├── g1_config.py          # Kp/Kd/DEFAULT_DOF_POS/ACTION_SCALE/poses/sequences
+│   │       │   ├── g1_config.py          # Kp/Kd/DEFAULT_POS/ACTION_SCALE/poses/sequences
 │   │       │   ├── real_g1_bridge.py     # ROS2<->DDS bridge, real robot only
 │   │       │   └── ps5_bridge.py         # PS5 controller -> /command
 │   │       └── launch/g1.launch.py       # mode:=sim | mode:=real
