@@ -36,6 +36,7 @@ class UniformVelocityCommand(CommandTerm):
     self.robot: Entity = env.scene[cfg.entity_name]
 
     self.vel_command_b = torch.zeros(self.num_envs, 3, device=self.device)
+    self.vel_command_target_b = torch.zeros(self.num_envs, 3, device=self.device)
     self.heading_target = torch.zeros(self.num_envs, device=self.device)
     self.heading_error = torch.zeros(self.num_envs, device=self.device)
     self.is_heading_env = torch.zeros(
@@ -71,10 +72,10 @@ class UniformVelocityCommand(CommandTerm):
 
   def _resample_command(self, env_ids: torch.Tensor) -> None:
     r = torch.empty(len(env_ids), device=self.device)
-    self.vel_command_b[env_ids, 0] = r.uniform_(*self.cfg.ranges.lin_vel_x)
-    self.vel_command_b[env_ids, 1] = r.uniform_(*self.cfg.ranges.lin_vel_y)
-    self.vel_command_b[env_ids, 2] = r.uniform_(*self.cfg.ranges.ang_vel_z)
-    self.vel_command_b[env_ids, :] *= (torch.norm(self.vel_command_b[env_ids, :], dim=1) > 0.1).unsqueeze(1)
+    self.vel_command_target_b[env_ids, 0] = r.uniform_(*self.cfg.ranges.lin_vel_x)
+    self.vel_command_target_b[env_ids, 1] = r.uniform_(*self.cfg.ranges.lin_vel_y)
+    self.vel_command_target_b[env_ids, 2] = r.uniform_(*self.cfg.ranges.ang_vel_z)
+    self.vel_command_target_b[env_ids, :] *= (torch.norm(self.vel_command_target_b[env_ids, :], dim=1) > 0.1).unsqueeze(1)
     if self.cfg.heading_command:
       assert self.cfg.ranges.heading is not None
       self.heading_target[env_ids] = r.uniform_(*self.cfg.ranges.heading)
@@ -87,16 +88,22 @@ class UniformVelocityCommand(CommandTerm):
       root_pos = self.robot.data.root_link_pos_w[init_vel_env_ids]
       root_quat = self.robot.data.root_link_quat_w[init_vel_env_ids]
       lin_vel_b = self.robot.data.root_link_lin_vel_b[init_vel_env_ids]
-      lin_vel_b[:, :2] = self.vel_command_b[init_vel_env_ids, :2]
+      lin_vel_b[:, :2] = self.vel_command_target_b[init_vel_env_ids, :2]
       root_lin_vel_w = quat_apply(root_quat, lin_vel_b)
       root_ang_vel_b = self.robot.data.root_link_ang_vel_b[init_vel_env_ids]
-      root_ang_vel_b[:, 2] = self.vel_command_b[init_vel_env_ids, 2]
+      root_ang_vel_b[:, 2] = self.vel_command_target_b[init_vel_env_ids, 2]
       root_state = torch.cat(
         [root_pos, root_quat, root_lin_vel_w, root_ang_vel_b], dim=-1
       )
       self.robot.write_root_state_to_sim(root_state, init_vel_env_ids)
 
   def _update_command(self) -> None:
+    max_delta = self.cfg.max_lin_accel * self._env.step_dt
+    lin_error = self.vel_command_target_b[:, :2] - self.vel_command_b[:, :2]
+    lin_error_norm = torch.norm(lin_error, dim=1, keepdim=True).clamp(min=1e-6)
+    lin_step = torch.clamp(lin_error_norm, max=max_delta) * (lin_error / lin_error_norm)
+    self.vel_command_b[:, :2] += lin_step
+    self.vel_command_b[:, 2] = self.vel_command_target_b[:, 2]
     if self.cfg.heading_command:
       self.heading_error = wrap_to_pi(self.heading_target - self.robot.data.heading_w)
       env_ids = self.is_heading_env.nonzero(as_tuple=False).flatten()
@@ -254,6 +261,7 @@ class UniformVelocityCommandCfg(CommandTermCfg):
   rel_standing_envs: float = 0.0
   rel_heading_envs: float = 1.0
   init_velocity_prob: float = 0.0
+  max_lin_accel: float = 100.0
 
   @dataclass
   class Ranges:

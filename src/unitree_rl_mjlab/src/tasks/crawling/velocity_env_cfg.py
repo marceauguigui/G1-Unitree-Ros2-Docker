@@ -24,13 +24,13 @@ from mjlab.scene import SceneCfg
 from mjlab.sensor import GridPatternCfg, ObjRef, RayCastSensorCfg
 from mjlab.sim import MujocoCfg, SimulationCfg
 from mjlab.tasks.velocity import mdp
-from mjlab.tasks.velocity.mdp import UniformVelocityCommandCfg
 from mjlab.terrains import TerrainEntityCfg
 from mjlab.terrains.config import ROUGH_TERRAINS_CFG
 from mjlab.utils.noise import UniformNoiseCfg as Unoise
 from mjlab.viewer import ViewerConfig
 
-import src.tasks.crawling.mdp as mdp
+import src.tasks.velocity.mdp as mdp
+from src.tasks.velocity.mdp import UniformVelocityCommandCfg
 
 
 def make_velocity_env_cfg() -> ManagerBasedRlEnvCfg:
@@ -169,6 +169,7 @@ def make_velocity_env_cfg() -> ManagerBasedRlEnvCfg:
       rel_standing_envs=0.05,
       heading_command=True,
       heading_control_stiffness=0.5,
+      max_lin_accel=1.5,
       debug_vis=True,
       ranges=UniformVelocityCommandCfg.Ranges(
         lin_vel_x=(-1.0, 1.0),
@@ -236,7 +237,7 @@ def make_velocity_env_cfg() -> ManagerBasedRlEnvCfg:
     "push_robot": EventTermCfg(
       func=mdp.push_by_setting_velocity,
       mode="interval",
-      interval_range_s=(3.0, 4.0),
+      interval_range_s=(3.0, 5.0),
       params={
         "velocity_range": {
           "x": (-1.0, 1.0),
@@ -254,7 +255,7 @@ def make_velocity_env_cfg() -> ManagerBasedRlEnvCfg:
       params={
         "asset_cfg": SceneEntityCfg("robot", geom_names=(".*ankle_roll.*",)),  # Set per-robot.
         "operation": "abs",
-        "ranges": (0.3, 1.6),
+        "ranges": (0.2, 1.8),
         "shared_random": True,  # All foot geoms share the same friction.
       },
     ),
@@ -288,12 +289,12 @@ def make_velocity_env_cfg() -> ManagerBasedRlEnvCfg:
   rewards = {
     "track_linear_velocity": RewardTermCfg(
       func=mdp.track_linear_velocity,
-      weight=2.0,
+      weight=1.0,
       params={"command_name": "twist", "std": math.sqrt(0.25)},
     ),
     "track_angular_velocity": RewardTermCfg(
       func=mdp.track_angular_velocity,
-      weight=2.0,
+      weight=1.0,
       params={"command_name": "twist", "std": math.sqrt(0.5)},
     ),
     "body_orientation_l2": RewardTermCfg(
@@ -316,7 +317,7 @@ def make_velocity_env_cfg() -> ManagerBasedRlEnvCfg:
     ),
     "body_ang_vel": RewardTermCfg(
       func=mdp.body_angular_velocity_penalty,
-      weight=-0.05,  # Override per-robot
+      weight=-0.2,  # Override per-robot
       params={"asset_cfg": SceneEntityCfg("robot", body_names=("torso_link"))},  # Set per-robot.
     ),
     "angular_momentum": RewardTermCfg(
@@ -352,7 +353,7 @@ def make_velocity_env_cfg() -> ManagerBasedRlEnvCfg:
     ),
     "foot_slip": RewardTermCfg(
       func=mdp.feet_slip,
-      weight=-0.25,
+      weight=-0.5,
       params={
         "sensor_name": "feet_ground_contact",
         "command_name": "twist",

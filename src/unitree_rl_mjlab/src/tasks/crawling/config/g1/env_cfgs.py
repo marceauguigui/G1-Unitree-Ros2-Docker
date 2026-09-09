@@ -1,4 +1,4 @@
-"""Unitree G1 velocity environment configurations."""
+"""Unitree G1 crawling environment configurations."""
 
 from src.assets.robots import (
   G1_ACTION_SCALE,
@@ -11,8 +11,8 @@ from mjlab.managers.event_manager import EventTermCfg
 from mjlab.managers.reward_manager import RewardTermCfg
 from mjlab.sensor import ContactMatch, ContactSensorCfg, RayCastSensorCfg
 from mjlab.tasks.velocity import mdp
-from mjlab.tasks.velocity.mdp import UniformVelocityCommandCfg
-from src.tasks.crawling.velocity_env_cfg import make_velocity_env_cfg
+from src.tasks.velocity.mdp import UniformVelocityCommandCfg
+from src.tasks.velocity.velocity_env_cfg import make_velocity_env_cfg
 
 
 def unitree_g1_rough_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
@@ -102,8 +102,8 @@ def unitree_g1_rough_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
     r".*ankle_roll.*": 0.1,
     # Waist.
     r".*waist_yaw.*": 0.15,
-    r".*waist_roll.*": 0.05,
-    r".*waist_pitch.*": 0.05,
+    r".*waist_roll.*": 0.1,
+    r".*waist_pitch.*": 0.1,
     # Arms.
     r".*shoulder_pitch.*": 0.15,
     r".*shoulder_roll.*": 0.1,
@@ -121,8 +121,8 @@ def unitree_g1_rough_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
     r".*ankle_roll.*": 0.1,
     # Waist.
     r".*waist_yaw.*": 0.25,
-    r".*waist_roll.*": 0.05,
-    r".*waist_pitch.*": 0.05,
+    r".*waist_roll.*": 0.1,
+    r".*waist_pitch.*": 0.1,
     # Arms.
     r".*shoulder_pitch.*": 0.25,
     r".*shoulder_roll.*": 0.1,
