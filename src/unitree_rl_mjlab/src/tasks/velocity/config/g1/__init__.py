@@ -3,9 +3,11 @@ from src.tasks.velocity.rl import VelocityOnPolicyRunner
 
 from .env_cfgs import (
   unitree_g1_flat_env_cfg,
+  unitree_g1_flat_crawling_env_cfg,
   unitree_g1_rough_env_cfg,
+  unitree_g1_rough_crawling_env_cfg,
 )
-from .rl_cfg import unitree_g1_ppo_runner_cfg
+from .rl_cfg import unitree_g1_ppo_runner_cfg, unitree_g1_ppo_runner_crawling_cfg
 
 register_mjlab_task(
   task_id="Unitree-G1-Rough",
@@ -20,5 +22,13 @@ register_mjlab_task(
   env_cfg=unitree_g1_flat_env_cfg(),
   play_env_cfg=unitree_g1_flat_env_cfg(play=True),
   rl_cfg=unitree_g1_ppo_runner_cfg(),
+  runner_cls=VelocityOnPolicyRunner,
+)
+
+register_mjlab_task(
+  task_id="Mjlab-Crawling-Unitree-G1",
+  env_cfg=unitree_g1_flat_crawling_env_cfg(),
+  play_env_cfg=unitree_g1_flat_crawling_env_cfg(play=True),
+  rl_cfg=unitree_g1_ppo_runner_crawling_cfg(),
   runner_cls=VelocityOnPolicyRunner,
 )

@@ -295,8 +295,8 @@ for a in G1_ARTICULATION.actuators:
     G1_ACTION_SCALE[n] = 0.25 * e / s
 
 # Waist roll/pitch are mechanically locked on the real robot so we lock them in the learning too
-G1_ACTION_SCALE["waist_pitch_joint"] = 0.0
-G1_ACTION_SCALE["waist_roll_joint"] = 0.0
+# G1_ACTION_SCALE["waist_pitch_joint"] = 0.0
+# G1_ACTION_SCALE["waist_roll_joint"] = 0.0
 
 if __name__ == "__main__":
   import mujoco.viewer as viewer

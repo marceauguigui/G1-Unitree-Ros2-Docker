@@ -205,7 +205,7 @@ class TeleopInputReader:
         self._listener.start()
 
         # Controller: state for edge-detection + mode cycling + selected joint (LOW mode)
-        self._mode_cycle_idx = AVAILABLE_MODES.index("HIGH")
+        self._mode_cycle_idx = AVAILABLE_MODES.index("LOW")
         self.selected_joint = 0
         self._prev_buttons: list[int] = []
 
@@ -386,7 +386,7 @@ def verify_joint_order(env) -> bool:
         print(f"[⚠️  WARNING] Different number of joints ({len(names)} vs {nbr_joints})!")
         return False
     print("  -> Compare these two lists yourself before trusting the\n"
-          "     HIGH/LOW/STOP modes (RL mode is not affected).\n")
+          "     LOW/HIGH/STOP modes (RL mode is not affected).\n")
     return True
 
 
@@ -402,7 +402,7 @@ class HybridPolicyWrapper:
         self.mins_np = np.array([lim[0] for lim in JOINTS_MIN_MAX], dtype=np.float32)
         self.maxs_np = np.array([lim[1] for lim in JOINTS_MIN_MAX], dtype=np.float32)
 
-        self.control_mode = "HIGH"
+        self.control_mode = "LOW"
         self._last_mode = None
 
         self._high_time = 0.0

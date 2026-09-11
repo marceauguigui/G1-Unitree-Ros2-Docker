@@ -19,7 +19,6 @@ from mjlab.utils.os import dump_yaml, get_checkpoint_path
 from mjlab.utils.torch import configure_torch_backends
 from mjlab.utils.wrappers import VideoRecorder
 
-
 @dataclass(frozen=True)
 class TrainConfig:
   env: ManagerBasedRlEnvCfg

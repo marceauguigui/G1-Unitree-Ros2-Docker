@@ -82,4 +82,4 @@ alias g1mjteleop='cd $UNITREE_RL_MJLAB_DIR && python scripts/teleop.py Mjlab-Vel
 # (rough)
 alias g1mjteleoprough='cd $UNITREE_RL_MJLAB_DIR && python scripts/teleop.py Mjlab-Velocity-Rough-Unitree-G1 --checkpoint-file $(ls -t logs/rsl_rl/g1_velocity/*/model_*.pt | head -n 1)'
 # (crawl flat)
-alias g1mjteleopcrawl='cd $UNITREE_RL_MJLAB_DIR && python scripts/teleop_crawl.py Mjlab-Crawling-Unitree-G1 --checkpoint-file $(ls -t logs/rsl_rl/g1_crawling/*/model_*.pt | head -n 1)'
+alias g1mjteleopcrawl='cd $UNITREE_RL_MJLAB_DIR && python scripts/teleop.py Mjlab-Crawling-Unitree-G1 --checkpoint-file $(ls -t logs/rsl_rl/g1_crawling/*/model_*.pt | head -n 1)'

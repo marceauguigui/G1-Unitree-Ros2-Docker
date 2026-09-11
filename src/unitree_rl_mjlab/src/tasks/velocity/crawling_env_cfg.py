@@ -33,8 +33,8 @@ import src.tasks.velocity.mdp as mdp
 from src.tasks.velocity.mdp import UniformVelocityCommandCfg
 
 
-def make_velocity_env_cfg() -> ManagerBasedRlEnvCfg:
-  """Create base velocity tracking task configuration."""
+def make_crawling_env_cfg() -> ManagerBasedRlEnvCfg:
+  """Create base crawling tracking task configuration."""
 
   ##
   # Sensors
@@ -169,7 +169,7 @@ def make_velocity_env_cfg() -> ManagerBasedRlEnvCfg:
       rel_standing_envs=0.05,
       heading_command=True,
       heading_control_stiffness=0.5,
-      max_lin_accel=1.5,
+      max_lin_accel=1.0,
       debug_vis=True,
       ranges=UniformVelocityCommandCfg.Ranges(
         lin_vel_x=(-1.0, 1.0),
@@ -190,8 +190,8 @@ def make_velocity_env_cfg() -> ManagerBasedRlEnvCfg:
       mode="reset",
       params={
         "pose_range": {
-          "x": (-1.0, 1.0),
-          "y": (-1.0, 1.0),
+          "x": (-0.5, 0.5),
+          "y": (-0.5, 0.5),
           "z": (0.0, 0.05),
           "roll": (-0.2, 0.2),
           "pitch": (-0.2, 0.2),
@@ -212,7 +212,7 @@ def make_velocity_env_cfg() -> ManagerBasedRlEnvCfg:
       func=mdp.reset_joints_by_offset,
       mode="reset",
       params={
-        "position_range": (0.9, 1.1),
+        "position_range": (-0.1, 0.1),
         "velocity_range": (-0.5, 0.5),
         "asset_cfg": SceneEntityCfg(
           "robot",
@@ -226,8 +226,8 @@ def make_velocity_env_cfg() -> ManagerBasedRlEnvCfg:
       func=mdp.reset_joints_by_offset,
       mode="reset",
       params={
-        "position_range": (-1.8, 1.8),
-        "velocity_range": (-0.2, 0.2),
+        "position_range": (-0.2, 0.2),
+        "velocity_range": (-0.1, 0.1),
         "asset_cfg": SceneEntityCfg(
           "robot",
           joint_names=(".*_shoulder_.*", ".*_elbow_.*", ".*_wrist_.*"),
