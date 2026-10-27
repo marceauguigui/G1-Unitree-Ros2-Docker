@@ -23,8 +23,9 @@ setup(
     entry_points={
         'console_scripts': [
             'g1_ros2_main = g1_controller.g1_ros2_main:main',
-            'ps5_bridge = g1_controller.ps5_bridge:main',
+            'controller_bridge = g1_controller.controller_bridge:main',
             'real_g1_bridge = g1_controller.real_g1_bridge:main',
+            'keyboard_bridge = g1_controller.keyboard_bridge:main'
         ],
     },
 )

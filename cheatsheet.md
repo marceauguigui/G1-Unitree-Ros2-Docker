@@ -19,6 +19,8 @@ ________________________________________________________________________________
 
 # ROS2 COMMANDS
 
+cb
+
 # LAUNCH FILE
 
 ros2 launch g1_controller g1.launch.py config:=sim
@@ -27,7 +29,7 @@ ros2 launch g1_controller g1.launch.py config:=real
 # TERMINAL 1
 ros2 run joy joy_node
 # TERMINAL 2
-ros2 run g1_controller ps5_bridge
+ros2 run g1_controller controller_bridge
 # TERMINAL 3
 ros2 run g1_controller g1_ros2_main
 # TERMINAL 4 SIM

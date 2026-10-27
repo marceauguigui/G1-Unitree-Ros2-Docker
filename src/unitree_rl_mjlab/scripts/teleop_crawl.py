@@ -1,8 +1,8 @@
 """RL teleoperation (RSL-RL + mjlab), MODE-based control (LOW/HIGH/RL/STOP) via
-KEYBOARD (F1-F3, 4-8) AND PS5 controller (mirrors ps5_bridge.py's logic, but
+KEYBOARD (F1-F3, 4-8) AND PS5 controller (mirrors controller_bridge.py's logic, but
 read directly through pygame — no ROS2/rclpy needed).
 
-Controller mapping (mirrors ps5_bridge.py):
+Controller mapping (mirrors controller_bridge.py):
   PS            -> immediate STOP (highest priority)
   OPTIONS       -> next mode (LOW -> HIGH -> RL -> LOW ...)
   SHARE         -> previous mode
@@ -44,7 +44,7 @@ from mjlab.viewer import NativeMujocoViewer, ViserPlayViewer
 
 CALIBRATE = os.environ.get("TELEOP_CALIBRATE") == "1"
 
-# ── PS5 button/axis mapping, taken from ps5_bridge.py ──
+# ── PS5 button/axis mapping, taken from controller_bridge.py ──
 BTN_CROSS    = 0
 BTN_CIRCLE   = 1
 BTN_TRIANGLE = 2
@@ -62,7 +62,7 @@ AXE_STICK_L_V = 1  # forward/backward (vx)
 AXE_STICK_R_H = 3  # yaw (RL mode)
 AXE_STICK_R_V = 4  # joint nudge (LOW mode)
 
-AVAILABLE_MODES = ["LOW", "HIGH", "RL"]  # same list/order as ps5_bridge.py (STOP = out-of-cycle, PS button only)
+AVAILABLE_MODES = ["LOW", "HIGH", "RL"]  # same list/order as controller_bridge.py (STOP = out-of-cycle, PS button only)
 
 # ── Crouch height control (D-pad) ──
 CROUCH_MIN = 0.20
@@ -173,7 +173,7 @@ class TeleopConfig:
 
 
 class TeleopInputReader:
-    """Controller (full PS5 mapping, mirrored from ps5_bridge.py) + global
+    """Controller (full PS5 mapping, mirrored from controller_bridge.py) + global
     keyboard fallback (F1-F3, 4-8) if no controller is detected."""
 
     _POSE_KEYS = {"4": "stand", "5": "squat", "6": "chair", "7": "coucou", "8": "squat_workout"}
@@ -237,7 +237,7 @@ class TeleopInputReader:
             num_axes = self.joystick.get_numaxes()
             v_yaw = self.joystick.get_axis(AXE_STICK_R_H) if num_axes > AXE_STICK_R_H else 0.0
             if abs(v_x) > self.deadzone: cmd_x = -v_x
-            if abs(v_y) > self.deadzone: cmd_y = -v_y * 0.8  # same 0.8 factor as ps5_bridge.py
+            if abs(v_y) > self.deadzone: cmd_y = -v_y * 0.8  # same 0.8 factor as controller_bridge.py
             if abs(v_yaw) > self.deadzone: cmd_yaw = -v_yaw
 
         if cmd_x == 0.0 and cmd_y == 0.0 and cmd_yaw == 0.0:
@@ -272,7 +272,7 @@ class TeleopInputReader:
         return mode, pose
 
     def poll_gamepad_events(self):
-        """Controller: mirrors ps5_bridge.py. Returns
+        """Controller: mirrors controller_bridge.py. Returns
         (stop, mode, pose, joint_select_delta, joint_move_val, crouch_delta)."""
         stop = False
         mode = None
@@ -341,7 +341,7 @@ class TeleopInputReader:
             if num_axes > AXE_STICK_R_V:
                 axis_val = self.joystick.get_axis(AXE_STICK_R_V)
                 if abs(axis_val) > 0.1:
-                    joint_move_val = axis_val * 0.5 * 0.02  # same scale as ps5_bridge.py + g1_ros2_controller
+                    joint_move_val = axis_val * 0.5 * 0.02  # same scale as controller_bridge.py + g1_ros2_controller
 
         # 5. Crouch height, D-pad up/down (RL mode only — no effect on tasks that
         # don't expose env.crouch_target, see HybridPolicyWrapper.__call__)

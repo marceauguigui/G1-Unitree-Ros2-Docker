@@ -49,8 +49,8 @@ def generate_launch_description():
 
         Node(
             package='g1_controller',
-            executable='ps5_bridge',
-            name='ps5_bridge',
+            executable='controller_bridge',
+            name='controller_bridge',
             output='screen'
         ),
 

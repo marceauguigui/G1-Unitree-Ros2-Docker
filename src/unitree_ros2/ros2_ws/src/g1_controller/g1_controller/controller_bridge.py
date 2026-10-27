@@ -26,10 +26,9 @@ AXE_STICK_R_V = 4  # right stick vertical (joint movement for LOW mode)
  
 STICK_DEADZONE = 0.1
  
- 
-class Ps5Bridge(Node):
+class Controller_Bridge(Node):
     def __init__(self):
-        super().__init__('ps5_bridge')
+        super().__init__('controller_bridge')
         self.cmd_pub = self.create_publisher(String, '/command', 10)
         self.joy_sub = self.create_subscription(Joy, '/joy', self.joy_callback, 10)
  
@@ -124,7 +123,7 @@ class Ps5Bridge(Node):
  
 def main():
     rclpy.init()
-    node = Ps5Bridge()
+    node = Controller_Bridge()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:

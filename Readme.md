@@ -68,7 +68,7 @@ G1-Unitree-Ros2-Docker/
 │   │       │   ├── g1_ros2_main.py       # main real-time controller (LOW/HIGH/RL/STOP)
 │   │       │   ├── g1_config.py          # Kp/Kd/DEFAULT_POS/ACTION_SCALE/poses/sequences
 │   │       │   ├── real_g1_bridge.py     # ROS2<->DDS bridge, real robot only
-│   │       │   └── ps5_bridge.py         # PS5 controller -> /command
+│   │       │   └── controller_bridge.py         # PS5 controller -> /command
 │   │       └── launch/g1.launch.py       # mode:=sim | mode:=real
 │   ├── unitree_sdk2/              # Unitree SDK (C++)
 │   └── unitree_sdk2_python/       # Unitree SDK (Python) — unitree_sdk2py
@@ -209,7 +209,7 @@ source install/setup.bash
 ros2 launch g1_controller g1.launch.py mode:=sim
 ```
 This launches `unitree_mujoco.py` (simulator, publishes `/base_lin_vel` from
-a native local-frame velocimeter), `g1_ros2_main.py`, `ps5_bridge.py`, and
+a native local-frame velocimeter), `g1_ros2_main.py`, `controller_bridge.py`, and
 `joy_node`. Control via `/command` (String topic), same PS5 mapping as above.
 
 Send commands manually if needed:
@@ -249,7 +249,7 @@ real_g1_bridge.py  ──publishes──▶  /lowstate (ROS2)
        ▼
 g1_ros2_main.py  ──publishes──▶  /lowcmd (ROS2) ──▶ rt/lowcmd (DDS, wire-compatible)
        ▲
-ps5_bridge.py  ──publishes──▶  /command (String)
+controller_bridge.py  ──publishes──▶  /command (String)
 ```
 
 Launch:
