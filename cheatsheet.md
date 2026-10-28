@@ -26,6 +26,9 @@ cb
 ros2 launch g1_controller g1.launch.py config:=sim
 ros2 launch g1_controller g1.launch.py config:=real
 
+# TERMINAL KEYBOARD
+ros2 run g1_controller keyboard_bridge
+
 # TERMINAL 1
 ros2 run joy joy_node
 # TERMINAL 2
@@ -37,7 +40,6 @@ cd /ros2_ws/src/unitree_mujoco/simulate_python
 python3 unitree_mujoco.py
 # TERMINAL 4 REAL
 ros2 run g1_controller real_g1_bridge
-
 ______________________________________________________________________________________________
 
 # MJLAB RAW COMMANDS
